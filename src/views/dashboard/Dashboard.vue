@@ -1,105 +1,135 @@
 <template>
-  <v-card>
-    <v-card-title>Send Sms</v-card-title>
-    <v-card-text>
-      <v-form>
-        <v-row>
-          <v-col
-            cols="12"
-            md="3"
-          >
-            <label for="firstname">Phone Number(s)</label>
-          </v-col>
-
-          <v-col
-            cols="12"
-            md="9"
-          >
-            <v-combobox
-              v-model="phone_numbers"
-              :items="items"
-              chips
-              clearable
-              label="Add phone numbers"
-              multiple
-              filled
-              prepend-icon="mdi-filter-variant"
-              solo
+  <div>
+    <v-card>
+      <v-card-title>Send Sms</v-card-title>
+      <v-card-text>
+        <v-form>
+          <v-row>
+            <v-col
+              cols="12"
+              md="3"
             >
-              <template v-slot:selection="{ attrs, item, select, selected }">
-                <v-chip
-                  v-bind="attrs"
-                  :input-value="selected"
-                  close
-                  @click="select"
-                  @click:close="remove(item)"
-                >
-                  <strong>{{ item }}</strong>&nbsp;
-                </v-chip>
-              </template>
-            </v-combobox>
-          </v-col>
-          <v-col
-            cols="12"
-            md="3"
-          >
-            <label for="mobile">Mobile</label>
-          </v-col>
+              <label for="firstname">Phone Number(s)</label>
+            </v-col>
 
-          <v-col
-            cols="12"
-            md="9"
-          >
-            <v-textarea
-              v-model="sms_text"
-              name="input-7-1"
-              filled
-              label="Message"
-              auto-grow
-            ></v-textarea>
-            <p v-if="sms_text">
-              Send {{ sms_text }}
-            </p>
-          </v-col>
-
-          <v-col
-            offset-md="11"
-            cols="12"
-          >
-            <v-btn
-              color="primary"
-              :disabled="!(sms_text)"
-              :loading="loading"
-              @click="sendMessage"
+            <v-col
+              cols="12"
+              md="9"
             >
-              Send
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-form>
-    </v-card-text>
-  </v-card>
+              <v-combobox
+                v-model="phone_numbers"
+                :items="items"
+                chips
+                clearable
+                label="Add phone numbers"
+                multiple
+                filled
+                prepend-icon="mdi-filter-variant"
+                solo
+              >
+                <template v-slot:selection="{ attrs, item, select, selected }">
+                  <v-chip
+                    v-bind="attrs"
+                    :input-value="selected"
+                    close
+                    @click="select"
+                    @click:close="remove(item)"
+                  >
+                    <strong>{{ item }}</strong>&nbsp;
+                  </v-chip>
+                </template>
+              </v-combobox>
+            </v-col>
+            <v-col
+              cols="12"
+              md="3"
+            >
+              <label for="mobile">Mobile</label>
+            </v-col>
+
+            <v-col
+              cols="12"
+              md="9"
+            >
+              <v-textarea
+                v-model="sms_text"
+                name="input-7-1"
+                filled
+                label="Message"
+                auto-grow
+              ></v-textarea>
+              <p v-if="sms_text">
+                Send {{ sms_text }}
+              </p>
+            </v-col>
+
+            <v-col
+              offset-md="11"
+              cols="12"
+            >
+              <v-btn
+                color="primary"
+                :disabled="!(sms_text)"
+                :loading="loading"
+                @click="sendMessage"
+              >
+                Send
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-form>
+      </v-card-text>
+    </v-card>
+
+    <v-card
+      v-if="devices"
+      class="mt-20"
+    >
+      <v-card-title>Available devices</v-card-title>
+      <v-data-table
+        :headers="headers"
+        :items="devices"
+        :items-per-page="5"
+        class="elevation-1"
+      >
+        <template v-slot:item.networks="{ item }">
+          <v-chip
+            v-for="network in item.networks"
+            :key="network.hnc"
+            v-row
+            color="primary"
+          >
+            {{ network.name }}
+          </v-chip>
+        </template>
+        <template v-slot:item.token="{ item }">
+          {{ item.token.substring(0,8) }}
+        </template>
+        <template v-slot:item.last_active_at="{ item }">
+          <h4>{{ new Date(item.last_active_at) }}</h4>
+        </template>
+        <template v-slot:item.status="{ item }">
+          <v-badge
+            overlap
+            dot
+            :color="item.status=='online'?'success':'error'"
+          >
+            <v-chip>
+              {{ item.status }}
+            </v-chip>
+          </v-badge>
+        </template>
+      </v-data-table>
+    </v-card>
+  </div>
 </template>
 
 <script>
 import { initializeApp } from 'firebase/app'
 import {
-  getFirestore, addDoc, collection,
+  getFirestore, addDoc, collection, onSnapshot,
 } from 'firebase/firestore'
 
-// Import the functions you need from the SDKs you need
-// import firebase from 'firebase/app'
-
-// import { getFirestore } from 'firebase/firestore'
-// import 'firebase/firestore'
-
-// import { getAnalytics } from 'firebase/analytics'
-
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: 'AIzaSyBWQAsXqYmD2hdxKbfa2YLv5QTBx0ItLHs',
   authDomain: 'cheap-internal-sms-app.firebaseapp.com',
@@ -126,8 +156,23 @@ export default {
       sms_text: '',
       phone_numbers: [],
       items: [],
+      devices: [],
+      headers: [
+        {
+          text: 'Device Token',
+          align: 'start',
+          sortable: false,
+          value: 'token',
+        },
+        { text: 'Active status', value: 'status' },
+        { text: 'Last Seen', value: 'last_active_at' },
+        { text: 'Networks', value: 'networks' },
+      ],
 
     }
+  },
+  mounted() {
+    this.getDevices()
   },
   methods: {
     remove(item) {
@@ -189,6 +234,17 @@ export default {
       //   .finally(() => {
       //     this.loading = false
       //   })
+    },
+    getDevices() {
+      this.loading = true
+      onSnapshot(collection(db, 'users'), querySnapshot => {
+        this.devices = querySnapshot.docs.map(doc => ({
+          token: doc.id,
+          ...doc.data(),
+
+        }))
+        this.loading = false
+      })
     },
   },
 }
