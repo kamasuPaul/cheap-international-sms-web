@@ -96,7 +96,6 @@
           <v-chip
             v-for="network in item.networks"
             :key="network.hnc"
-            v-row
             color="primary"
           >
             {{ network.name }}
@@ -106,7 +105,7 @@
           {{ item.token.substring(0,8) }}
         </template>
         <template v-slot:item.last_active_at="{ item }">
-          <h4>{{ new Date(item.last_active_at) }}</h4>
+          <h4>{{ new Date(item.last_active_at) }}<br><span class="text-caption">{{ timeDiff(item.last_active_at) }}</span></h4>
         </template>
         <template v-slot:item.status="{ item }">
           <v-badge
@@ -129,6 +128,7 @@ import { initializeApp } from 'firebase/app'
 import {
   getFirestore, addDoc, collection, onSnapshot,
 } from 'firebase/firestore'
+import TimeDiff from 'js-time-diff'
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBWQAsXqYmD2hdxKbfa2YLv5QTBx0ItLHs',
@@ -245,6 +245,9 @@ export default {
         }))
         this.loading = false
       })
+    },
+    timeDiff(time) {
+      return TimeDiff(time)
     },
   },
 }
