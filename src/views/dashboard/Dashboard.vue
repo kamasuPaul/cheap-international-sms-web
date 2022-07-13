@@ -26,7 +26,7 @@
               <VuePhoneNumberInput
                 v-model="phoneNumber"
                 clearable
-                default-country-code="UG"
+                :default-country-code="defaultCountryCode"
                 @update="addPhoneNumber"
                 @keyup.enter.prevent="clear"
               />
@@ -75,7 +75,7 @@
               column
             >
               <v-chip
-                v-for="phone in phones"
+                v-for="phone in phone_numbers"
                 :key="phone"
               >
                 {{ phone }}
@@ -169,6 +169,10 @@ import {
   getFirestore, addDoc, collection, onSnapshot,
 } from 'firebase/firestore'
 import TimeDiff from 'js-time-diff'
+import {
+  // eslint-disable-next-line no-unused-vars
+  isValidPhoneNumber, parsePhoneNumber,
+} from 'libphonenumber-js'
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBWQAsXqYmD2hdxKbfa2YLv5QTBx0ItLHs',
@@ -218,18 +222,32 @@ export default {
       selectedColumn: '',
       phoneNumber: '',
       columnJson: null,
+      defaultCountryCode: 'UG',
 
     }
   },
   watch: {
-    file(newFile) {
-      if (newFile) {
-        this.parseFile(newFile)
-      }
-    },
     selectedColumn(newColumn) {
       if (newColumn) {
-        this.phones = this.columnJson.map(item => item[newColumn])
+        console.log('---------')
+
+        // loop through columnJson
+        for (let i = 0; i < this.columnJson.length; i += 1) {
+          console.log(this.columnJson[i][newColumn])
+          const columnValues = this.columnJson[i][newColumn]
+
+          if (columnValues === undefined) {
+            // eslint-disable-next-line no-continue
+            continue
+          }
+
+          let phoneNumber = String(columnValues)
+          console.log(typeof (phoneNumber))
+          phoneNumber = parsePhoneNumber(phoneNumber, this.defaultCountryCode)
+          if (phoneNumber.isValid()) {
+            this.phone_numbers.push(phoneNumber.number)
+          }
+        }
       }
     },
   },
