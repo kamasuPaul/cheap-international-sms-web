@@ -5,52 +5,74 @@
       <v-card-text>
         <v-form>
           <v-row>
-            <v-col
-              cols="12"
-              md="3"
+            <v-chip-group
+              active-class="primary--text"
+              column
             >
-              <label for="firstname">Phone Number(s)</label>
-            </v-col>
-
-            <v-col
-              cols="12"
-              md="9"
-            >
-              <v-combobox
-                v-model="phone_numbers"
-                :items="items"
-                chips
-                clearable
-                label="Add phone numbers"
-                multiple
-                filled
-                prepend-icon="mdi-filter-variant"
-                solo
+              <v-chip
+                v-for="column in columns"
+                :key="column"
               >
-                <template v-slot:selection="{ attrs, item, select, selected }">
-                  <v-chip
-                    v-bind="attrs"
-                    :input-value="selected"
-                    close
-                    @click="select"
-                    @click:close="remove(item)"
-                  >
-                    <strong>{{ item }}</strong>&nbsp;
-                  </v-chip>
-                </template>
-              </v-combobox>
+                {{ column }}
+              </v-chip>
+            </v-chip-group>
+          </v-row>
+          <v-row>
+            <v-col
+              cols="8"
+            >
+              <label for="mobile"> Add Phone numbers</label>
+              <VuePhoneNumberInput
+                v-model="phoneNumber"
+                clearable
+                default-country-code="UG"
+                @update="addPhoneNumber"
+                @keyup.enter="clear"
+              />
             </v-col>
             <v-col
-              cols="12"
-              md="3"
+              cols="2"
             >
-              <label for="mobile">Mobile</label>
+              <label for="mobile">Bulk import</label>
+              <v-file-input
+                v-model="file"
+                label="Import Excel file"
+                outlined
+                dense
+                @change="onFileChange"
+              ></v-file-input>
             </v-col>
-
+            <v-col
+              cols="2"
+            >
+              <v-btn
+                class="mt-5"
+                color="primary"
+                :disabled="!phone_numbers"
+                @click="clear"
+              >
+              Clear
+              </v-btn>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-chip-group
+              active-class="primary--text"
+              column
+            >
+              <v-chip
+                v-for="phone in phones"
+                :key="phone"
+              >
+                {{ phone }}
+              </v-chip>
+            </v-chip-group>
+          </v-row>
+          <v-row>
             <v-col
               cols="12"
-              md="9"
             >
+              <label for="mobile">Message</label>
               <v-textarea
                 v-model="sms_text"
                 name="input-7-1"
@@ -62,10 +84,11 @@
                 Send {{ sms_text }}
               </p>
             </v-col>
-
+          </v-row>
+          <v-row>
             <v-col
-              offset-md="11"
               cols="12"
+              class="d-flex flex-row-reverse"
             >
               <v-btn
                 color="primary"
@@ -124,6 +147,9 @@
 </template>
 
 <script>
+import VuePhoneNumberInput from 'vue-phone-number-input'
+import 'vue-phone-number-input/dist/vue-phone-number-input.css'
+import * as XLSX from 'xlsx'
 import { initializeApp } from 'firebase/app'
 import {
   getFirestore, addDoc, collection, onSnapshot,
@@ -150,11 +176,15 @@ const db = getFirestore(app)
 
 // const analytics = getAnalytics(app)
 export default {
+  components: {
+    VuePhoneNumberInput,
+  },
   data() {
     return {
       loading: false,
       sms_text: '',
       phone_numbers: [],
+      phones: [],
       items: [],
       devices: [],
       headers: [
@@ -168,6 +198,9 @@ export default {
         { text: 'Last Seen', value: 'last_active_at' },
         { text: 'Networks', value: 'networks' },
       ],
+      file: null,
+      columns: [],
+      phoneNumber: '',
 
     }
   },
@@ -175,6 +208,20 @@ export default {
     this.getDevices()
   },
   methods: {
+    clear() {
+      this.phone_numbers = []
+      this.phones = []
+    },
+    addPhoneNumber(value) {
+      // console.log(value)
+
+      // if input is valid
+      if (value.isValid) {
+        this.phone_numbers.push(value.formattedNumber)
+        this.phones.push(value.formattedNumber)
+        this.phoneNumber = null
+      }
+    },
     remove(item) {
       this.phone_numbers.splice(this.phone_numbers.indexOf(item), 1)
       this.phone_numbers = [...this.phone_numbers]
@@ -248,6 +295,24 @@ export default {
     },
     timeDiff(time) {
       return TimeDiff(time)
+    },
+    async onFileChange(e) {
+      // const { files } = e.target
+      // if (!files.length) return
+
+      console.log(e)
+      const data = await this.file.arrayBuffer()
+
+      const workbook = XLSX.read(data)
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+
+      // print column names
+      const colNames = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0]
+      this.columns = Object.values(colNames)
+      const json = XLSX.utils.sheet_to_json(sheet)
+      console.log(json)
+
+      this.phones = json.map(item => item[this.columns[1]])
     },
   },
 }
