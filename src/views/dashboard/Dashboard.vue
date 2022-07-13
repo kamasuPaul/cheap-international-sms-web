@@ -19,7 +19,8 @@
           </v-row>
           <v-row>
             <v-col
-              cols="8"
+              cols="6"
+              col-sm="12"
             >
               <label for="mobile"> Add Phone numbers</label>
               <VuePhoneNumberInput
@@ -27,7 +28,7 @@
                 clearable
                 default-country-code="UG"
                 @update="addPhoneNumber"
-                @keyup.enter="clear"
+                @keyup.enter.prevent="clear"
               />
             </v-col>
             <v-col
@@ -45,13 +46,26 @@
             <v-col
               cols="2"
             >
+              <label for="mobile">Column with telphone nos</label>
+              <v-select
+                v-model="selectedColumn"
+                :items="selectable_columns"
+                label="phone number field"
+                dense
+                outlined
+                :disabled="!file"
+              ></v-select>
+            </v-col>
+            <v-col
+              cols="2"
+            >
               <v-btn
                 class="mt-5"
                 color="primary"
                 :disabled="!phone_numbers"
                 @click="clear"
               >
-              Clear
+                Clear
               </v-btn>
             </v-col>
           </v-row>
@@ -200,9 +214,24 @@ export default {
       ],
       file: null,
       columns: [],
+      selectable_columns: [],
+      selectedColumn: '',
       phoneNumber: '',
+      columnJson: null,
 
     }
+  },
+  watch: {
+    file(newFile) {
+      if (newFile) {
+        this.parseFile(newFile)
+      }
+    },
+    selectedColumn(newColumn) {
+      if (newColumn) {
+        this.phones = this.columnJson.map(item => item[newColumn])
+      }
+    },
   },
   mounted() {
     this.getDevices()
@@ -219,7 +248,7 @@ export default {
       if (value.isValid) {
         this.phone_numbers.push(value.formattedNumber)
         this.phones.push(value.formattedNumber)
-        this.phoneNumber = null
+        this.phoneNumber = ''
       }
     },
     remove(item) {
@@ -309,10 +338,15 @@ export default {
       // print column names
       const colNames = XLSX.utils.sheet_to_json(sheet, { header: 1 })[0]
       this.columns = Object.values(colNames)
+
+      // loop through the columns and add them to the selectable columns
+      this.selectable_columns = this.columns.map(col => ({
+        text: col,
+        value: col,
+      }))
       const json = XLSX.utils.sheet_to_json(sheet)
       console.log(json)
-
-      this.phones = json.map(item => item[this.columns[1]])
+      this.columnJson = json
     },
   },
 }
