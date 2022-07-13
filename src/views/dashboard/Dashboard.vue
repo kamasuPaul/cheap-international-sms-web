@@ -86,13 +86,14 @@
             <v-col
               cols="12"
             >
-              <label for="mobile">Message</label>
+              <label for="mobile">Message <span class="text-caption font-weight-black">({{charactersLeft}})</span></label>
               <v-textarea
                 v-model="sms_text"
                 name="input-7-1"
                 filled
                 label="Message"
                 auto-grow
+                :rules="[v => (v || '' ).length <= 160 || 'SMS messages must be 160 characters or less']"
               ></v-textarea>
               <p v-if="sms_text">
                 Send {{ sms_text }}
@@ -225,6 +226,14 @@ export default {
       defaultCountryCode: 'UG',
 
     }
+  },
+  computed: {
+    charactersLeft() {
+      const char = this.sms_text.length
+      const limit = 160
+
+      return `${limit - char} / ${limit} characters left`
+    },
   },
   watch: {
     selectedColumn(newColumn) {
