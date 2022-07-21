@@ -116,10 +116,36 @@
     </v-card>
 
     <v-card
+      v-if="messages"
+      class="mt-20"
+    >
+      <v-card-title>Messages</v-card-title>
+      <v-data-table
+        :headers="sms_headers"
+        :items="messages"
+        :items-per-page="5"
+        class="elevation-1"
+      >
+        <template v-slot:item.sms_text="{ item }">
+          <div
+            class="text-truncate"
+            style="max-width: 300px"
+          >
+            {{ item.sms_text }}
+          </div>
+        </template>
+        <template v-slot:item.status="{ item }">
+          <v-chip :color="item.status == 'Sent' ? 'success' : 'error'">
+            {{ item.status }}
+          </v-chip>
+        </template>
+      </v-data-table>
+    </v-card>
+    <v-card
       v-if="devices"
       class="mt-20"
     >
-      <v-card-title>Available devices</v-card-title>
+      <v-card-title>Devices</v-card-title>
       <v-data-table
         :headers="headers"
         :items="devices"
@@ -155,27 +181,6 @@
               {{ item.status }}
             </v-chip>
           </v-badge>
-        </template>
-      </v-data-table>
-    </v-card>
-    <v-card
-      v-if="devices"
-      class="mt-20"
-    >
-      <v-card-title>Messages</v-card-title>
-      <v-data-table
-        :headers="sms_headers"
-        :items="messages"
-        :items-per-page="5"
-        class="elevation-1"
-      >
-        <template v-slot:item.message="{ item }">
-          {{ item.token.substring(0, 15) }}
-        </template>
-        <template v-slot:item.status="{ item }">
-          <v-chip :color="item.status == 'Sent' ? 'success' : 'error'">
-            {{ item.status }}
-          </v-chip>
         </template>
       </v-data-table>
     </v-card>
@@ -247,7 +252,7 @@ export default {
           sortable: false,
           value: 'message_id',
         },
-        { text: 'Message', value: 'sms_text' },
+        { text: 'Message', value: 'sms_text', width: 300 },
         { text: 'Status', value: 'status' },
       ],
       file: null,
@@ -346,47 +351,6 @@ export default {
           this.loading = false
         })
       })
-
-      // Commit the batch
-      // batch.commit().then(() => {
-      //   this.loading = false
-      // })
-
-      // // try {
-      // addDoc(collection(db, 'messages'), {
-      //   phone: this.phone,
-      //   sms_text: this.sms_text,
-      //   status: 'pending',
-      // })
-      //   .then(docRef => {
-      //     console.log('Document written with ID: ', docRef.id)
-      //   })
-      //   .catch(error => {
-      //     console.error('Error adding document: ', error)
-      //   })
-      //   .finally(() => {
-      //     this.loading = false
-      //   })
-
-      // } catch (e) {
-      //   console.error('Error adding document: ', e)
-      // }
-
-      // db.collection('messages')
-      //   .add({
-      //     phone: this.phone,
-      //     sms_text: this.sms_text,
-      //     status: 'pending',
-      //   })
-      //   .then(docRef => {
-      //     console.log('Document written with ID: ', docRef.id)
-      //   })
-      //   .catch(error => {
-      //     console.error('Error adding document: ', error)
-      //   })
-      //   .finally(() => {
-      //     this.loading = false
-      //   })
     },
     getDevices() {
       this.loading = true
