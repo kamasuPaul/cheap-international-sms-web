@@ -1,7 +1,9 @@
 <template>
   <div>
     <v-card>
-      <v-card-title>Send Sms</v-card-title>
+      <v-card-title>
+        Send Sms <span class="primary--text"> #({{ deviceToken }}) </span>
+      </v-card-title>
       <v-card-text>
         <v-form>
           <v-row>
@@ -31,9 +33,7 @@
                 @keyup.enter.prevent="clear"
               />
             </v-col>
-            <v-col
-              cols="2"
-            >
+            <v-col cols="2">
               <label for="mobile">Bulk import</label>
               <v-file-input
                 v-model="file"
@@ -43,9 +43,7 @@
                 @change="onFileChange"
               ></v-file-input>
             </v-col>
-            <v-col
-              cols="2"
-            >
+            <v-col cols="2">
               <label for="mobile">Column with telphone nos</label>
               <v-select
                 v-model="selectedColumn"
@@ -56,9 +54,7 @@
                 :disabled="!file"
               ></v-select>
             </v-col>
-            <v-col
-              cols="2"
-            >
+            <v-col cols="2">
               <v-btn
                 class="mt-5"
                 color="primary"
@@ -83,17 +79,17 @@
             </v-chip-group>
           </v-row>
           <v-row>
-            <v-col
-              cols="12"
-            >
-              <label for="mobile">Message <span class="text-caption font-weight-black">({{charactersLeft}})</span></label>
+            <v-col cols="12">
+              <label
+                for="mobile"
+              >Message <span class="text-caption font-weight-black">({{ charactersLeft }})</span></label>
               <v-textarea
                 v-model="sms_text"
                 name="input-7-1"
                 filled
                 label="Message"
                 auto-grow
-                :rules="[v => (v || '' ).length <= 160 || 'SMS messages must be 160 characters or less']"
+                :rules="[v => (v || '').length <= 160 || 'SMS messages must be 160 characters or less']"
               ></v-textarea>
               <p v-if="sms_text">
                 Send {{ sms_text }}
@@ -107,7 +103,7 @@
             >
               <v-btn
                 color="primary"
-                :disabled="!(sms_text)"
+                :disabled="!sms_text"
                 :loading="loading"
                 @click="sendMessage"
               >
@@ -140,21 +136,46 @@
           </v-chip>
         </template>
         <template v-slot:item.token="{ item }">
-          {{ item.token.substring(0,8) }}
+          {{ item.token.substring(0, 8) }}
         </template>
         <template v-slot:item.last_active_at="{ item }">
-          <h4>{{ new Date(item.last_active_at) }}<br><span class="text-caption">{{ timeDiff(item.last_active_at) }}</span></h4>
+          <h4>
+            {{ new Date(item.last_active_at) }}<br /><span class="text-caption">{{
+              timeDiff(item.last_active_at)
+            }}</span>
+          </h4>
         </template>
         <template v-slot:item.status="{ item }">
           <v-badge
             overlap
             dot
-            :color="item.status=='online'?'success':'error'"
+            :color="item.status == 'online' ? 'success' : 'error'"
           >
             <v-chip>
               {{ item.status }}
             </v-chip>
           </v-badge>
+        </template>
+      </v-data-table>
+    </v-card>
+    <v-card
+      v-if="devices"
+      class="mt-20"
+    >
+      <v-card-title>Messages</v-card-title>
+      <v-data-table
+        :headers="sms_headers"
+        :items="messages"
+        :items-per-page="5"
+        class="elevation-1"
+      >
+        <template v-slot:item.message="{ item }">
+          {{ item.token.substring(0, 15) }}
+        </template>
+        <template v-slot:item.status="{ item }">
+          <v-chip :color="item.status == 'Sent' ? 'success' : 'error'">
+            {{ item.status }}
+          </v-chip>
         </template>
       </v-data-table>
     </v-card>
@@ -167,12 +188,13 @@ import 'vue-phone-number-input/dist/vue-phone-number-input.css'
 import * as XLSX from 'xlsx'
 import { initializeApp } from 'firebase/app'
 import {
-  getFirestore, addDoc, collection, onSnapshot,
+  getFirestore, addDoc, collection, onSnapshot, query, where,
 } from 'firebase/firestore'
 import TimeDiff from 'js-time-diff'
 import {
   // eslint-disable-next-line no-unused-vars
-  isValidPhoneNumber, parsePhoneNumber,
+  isValidPhoneNumber,
+  parsePhoneNumber,
 } from 'libphonenumber-js'
 
 const firebaseConfig = {
@@ -206,6 +228,7 @@ export default {
       phones: [],
       items: [],
       devices: [],
+      messages: [],
       headers: [
         {
           text: 'Device Token',
@@ -217,6 +240,16 @@ export default {
         { text: 'Last Seen', value: 'last_active_at' },
         { text: 'Networks', value: 'networks' },
       ],
+      sms_headers: [
+        {
+          text: '#ID',
+          align: 'start',
+          sortable: false,
+          value: 'message_id',
+        },
+        { text: 'Message', value: 'sms_text' },
+        { text: 'Status', value: 'status' },
+      ],
       file: null,
       columns: [],
       selectable_columns: [],
@@ -224,7 +257,7 @@ export default {
       phoneNumber: '',
       columnJson: null,
       defaultCountryCode: 'UG',
-
+      deviceToken: '',
     }
   },
   computed: {
@@ -251,7 +284,7 @@ export default {
           }
 
           let phoneNumber = String(columnValues)
-          console.log(typeof (phoneNumber))
+          console.log(typeof phoneNumber)
           phoneNumber = parsePhoneNumber(phoneNumber, this.defaultCountryCode)
           if (phoneNumber.isValid()) {
             this.phone_numbers.push(phoneNumber.number)
@@ -259,9 +292,26 @@ export default {
         }
       }
     },
+    deviceToken(newToken) {
+      // update token in local storage
+      localStorage.setItem('deviceToken', newToken)
+    },
   },
   mounted() {
     this.getDevices()
+
+    // generate 6 digit random string
+    const token = Math.random()
+      .toString(36)
+      .substring(2, 8)
+
+    this.deviceToken = localStorage.getItem('deviceToken')
+    if (!this.deviceToken) {
+      localStorage.setItem('deviceToken', token)
+      this.deviceToken = token
+    }
+
+    this.getMessages()
   },
   methods: {
     clear() {
@@ -291,10 +341,10 @@ export default {
           phone: number,
           sms_text: this.sms_text,
           status: 'pending',
+          device_token: this.deviceToken,
+        }).finally(() => {
+          this.loading = false
         })
-          .finally(() => {
-            this.loading = false
-          })
       })
 
       // Commit the batch
@@ -344,7 +394,19 @@ export default {
         this.devices = querySnapshot.docs.map(doc => ({
           token: doc.id,
           ...doc.data(),
-
+        }))
+        this.loading = false
+      })
+    },
+    getMessages() {
+      this.loading = true
+      const token = this.deviceToken
+      const collectionQuery = query(collection(db, 'messages'), where('device_token', '==', token))
+      onSnapshot(collectionQuery, querySnapshot => {
+        console.log(querySnapshot)
+        this.messages = querySnapshot.docs.map(doc => ({
+          message_id: doc.id,
+          ...doc.data(),
         }))
         this.loading = false
       })
