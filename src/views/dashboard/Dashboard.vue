@@ -135,7 +135,7 @@
           </div>
         </template>
         <template v-slot:item.status="{ item }">
-          <v-chip :color="item.status == 'Sent' ? 'success' : 'error'">
+          <v-chip :color="getColor(item.status)">
             {{ item.status }}
           </v-chip>
         </template>
@@ -193,7 +193,7 @@ import 'vue-phone-number-input/dist/vue-phone-number-input.css'
 import * as XLSX from 'xlsx'
 import { initializeApp } from 'firebase/app'
 import {
-  getFirestore, addDoc, collection, onSnapshot, query, where,
+  getFirestore, addDoc, collection, onSnapshot, query, where, Timestamp,
 } from 'firebase/firestore'
 import TimeDiff from 'js-time-diff'
 import {
@@ -323,6 +323,20 @@ export default {
       this.phone_numbers = []
       this.phones = []
     },
+    getColor(status) {
+      switch (status) {
+        case 'Sent':
+          return 'success'
+        case 'Failed':
+          return 'error'
+        case 'Pending':
+          return 'warning'
+        case 'Delivered':
+          return 'info'
+        default:
+          return 'warning'
+      }
+    },
     addPhoneNumber(value) {
       // console.log(value)
 
@@ -347,6 +361,7 @@ export default {
           sms_text: this.sms_text,
           status: 'pending',
           device_token: this.deviceToken,
+          created_at: Timestamp.now(),
         }).finally(() => {
           this.loading = false
         })
@@ -372,6 +387,11 @@ export default {
           message_id: doc.id,
           ...doc.data(),
         }))
+
+        // sort the messages by create_at
+
+        this.messages.sort((a, b) => b.created_at - a.created_at)
+
         this.loading = false
       })
     },
