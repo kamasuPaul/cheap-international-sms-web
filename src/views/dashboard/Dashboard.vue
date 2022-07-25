@@ -6,7 +6,7 @@
       </v-card-title>
       <v-card-text>
         <v-form>
-          <v-row>
+          <v-row v-if="columns">
             <v-chip-group
               active-class="primary--text"
               column
@@ -20,10 +20,7 @@
             </v-chip-group>
           </v-row>
           <v-row>
-            <v-col
-              cols="6"
-              col-sm="12"
-            >
+            <v-col cols="9">
               <label for="mobile"> Add Phone numbers</label>
               <VuePhoneNumberInput
                 v-model="phoneNumber"
@@ -33,17 +30,22 @@
                 @keyup.enter.prevent="clear"
               />
             </v-col>
-            <v-col cols="2">
-              <label for="mobile">Bulk import</label>
+            <v-col cols="3">
+              <label for="mobile">import</label>
               <v-file-input
                 v-model="file"
+                hide-input
                 label="Import Excel file"
                 outlined
                 dense
                 @change="onFileChange"
-              ></v-file-input>
+              >
+              </v-file-input>
             </v-col>
-            <v-col cols="2">
+            <v-col
+              v-if="file"
+              cols="12"
+            >
               <label for="mobile">Column with telphone nos</label>
               <v-select
                 v-model="selectedColumn"
@@ -54,16 +56,6 @@
                 :disabled="!file"
               ></v-select>
             </v-col>
-            <v-col cols="2">
-              <v-btn
-                class="mt-5"
-                color="primary"
-                :disabled="!phone_numbers"
-                @click="clear"
-              >
-                Clear
-              </v-btn>
-            </v-col>
           </v-row>
           <v-row>
             <v-chip-group
@@ -73,16 +65,31 @@
               <v-chip
                 v-for="phone in phone_numbers"
                 :key="phone"
+                close
+                @click:close="removePhoneNumber(phone)"
               >
                 {{ phone }}
               </v-chip>
             </v-chip-group>
+            <v-col
+              v-if="phone_numbers.length > 0"
+              cols="2"
+            >
+              <v-btn
+                small
+                class="mt-5"
+                color="primary"
+                :disabled="!phone_numbers"
+                @click="clear"
+              >
+                Clear all
+              </v-btn>
+            </v-col>
           </v-row>
           <v-row>
             <v-col cols="12">
-              <label
-                for="mobile"
-              >Message <span class="text-caption font-weight-black">({{ charactersLeft }})</span></label>
+              <label for="mobile">Message <span class="text-caption font-weight-black">({{ charactersLeft
+              }})</span></label>
               <v-textarea
                 v-model="sms_text"
                 name="input-7-1"
@@ -91,8 +98,8 @@
                 auto-grow
                 :rules="[v => (v || '').length <= 160 || 'SMS messages must be 160 characters or less']"
               ></v-textarea>
-              <p v-if="sms_text">
-                Send {{ sms_text }}
+              <p v-if="sms_text && phones">
+                Send "{{ sms_text }}" to <span class="primary--text">{{ phone_numbers.length }}</span> phone number(s)
               </p>
             </v-col>
           </v-row>
@@ -103,7 +110,7 @@
             >
               <v-btn
                 color="primary"
-                :disabled="!sms_text"
+                :disabled="!sms_text || !phone_numbers.length>0"
                 :loading="loading"
                 @click="sendMessage"
               >
@@ -292,7 +299,10 @@ export default {
           console.log(typeof phoneNumber)
           phoneNumber = parsePhoneNumber(phoneNumber, this.defaultCountryCode)
           if (phoneNumber.isValid()) {
-            this.phone_numbers.push(phoneNumber.number)
+            // check if the number exists in the phones array
+            if (!this.phone_numbers.includes(phoneNumber.number)) {
+              this.phone_numbers.push(phoneNumber.number)
+            }
           }
         }
       }
@@ -319,6 +329,11 @@ export default {
     this.getMessages()
   },
   methods: {
+    removePhoneNumber(phoneNumber) {
+      this.phone_numbers = this.phone_numbers.filter(
+        number => number !== phoneNumber,
+      )
+    },
     clear() {
       this.phone_numbers = []
       this.phones = []
@@ -342,9 +357,11 @@ export default {
 
       // if input is valid
       if (value.isValid) {
-        this.phone_numbers.push(value.formattedNumber)
-        this.phones.push(value.formattedNumber)
-        this.phoneNumber = ''
+        // check if phone number already exists
+        if (!this.phone_numbers.includes(value.formattedNumber)) {
+          this.phone_numbers.push(value.formattedNumber)
+          this.phoneNumber = ''
+        }
       }
     },
     remove(item) {
