@@ -1,3 +1,4 @@
+<!-- eslint-disable lines-around-comment -->
 <template>
   <div>
     <v-card>
@@ -6,21 +7,8 @@
       </v-card-title>
       <v-card-text>
         <v-form>
-          <v-row v-if="columns">
-            <v-chip-group
-              active-class="primary--text"
-              column
-            >
-              <v-chip
-                v-for="column in columns"
-                :key="column"
-              >
-                {{ column }}
-              </v-chip>
-            </v-chip-group>
-          </v-row>
           <v-row>
-            <v-col cols="9">
+            <v-col cols="12">
               <label for="mobile"> Add Phone numbers</label>
               <VuePhoneNumberInput
                 v-model="phoneNumber"
@@ -42,10 +30,7 @@
               >
               </v-file-input>
             </v-col>
-            <v-col
-              v-if="file"
-              cols="12"
-            >
+            <v-col v-if="file">
               <label for="mobile">Column with telphone nos</label>
               <v-select
                 v-model="selectedColumn"
@@ -87,15 +72,33 @@
               </v-btn>
             </v-col>
           </v-row>
+          <v-row v-if="columns">
+            <v-chip-group
+              active-class="primary--text"
+              column
+            >
+              <v-chip
+                v-for="column in columns"
+                :key="column"
+                small
+                @click="insertColumn(column)"
+              >
+                {{ column }}
+              </v-chip>
+            </v-chip-group>
+          </v-row>
           <v-row>
             <v-col cols="12">
               <label for="mobile">Message <span class="text-caption font-weight-black">({{ charactersLeft
               }})</span></label>
               <v-textarea
+                ref="textarea_sms_text"
                 v-model="sms_text"
                 name="input-7-1"
                 filled
                 label="Message"
+                counter
+                clearable
                 auto-grow
                 :rules="[v => (v || '').length <= 160 || 'SMS messages must be 160 characters or less']"
               ></v-textarea>
@@ -111,7 +114,7 @@
             >
               <v-btn
                 color="primary"
-                :disabled="!sms_text || !phone_numbers.length>0"
+                :disabled="!sms_text || !phone_numbers.length > 0"
                 :loading="loading"
                 @click="sendMessage"
               >
@@ -201,6 +204,7 @@ import 'vue-phone-number-input/dist/vue-phone-number-input.css'
 import * as XLSX from 'xlsx'
 import { initializeApp } from 'firebase/app'
 import {
+  // eslint-disable-next-line no-unused-vars
   getFirestore, addDoc, collection, onSnapshot, query, where, Timestamp,
 } from 'firebase/firestore'
 import TimeDiff from 'js-time-diff'
@@ -260,6 +264,7 @@ export default {
           sortable: false,
           value: 'message_id',
         },
+        { text: 'To', value: 'phone' },
         { text: 'Message', value: 'sms_text', width: 300 },
         { text: 'Status', value: 'status' },
       ],
@@ -284,11 +289,8 @@ export default {
   watch: {
     selectedColumn(newColumn) {
       if (newColumn) {
-        console.log('---------')
-
         // loop through columnJson
         for (let i = 0; i < this.columnJson.length; i += 1) {
-          console.log(this.columnJson[i][newColumn])
           const columnValues = this.columnJson[i][newColumn]
 
           if (columnValues === undefined) {
@@ -297,7 +299,6 @@ export default {
           }
 
           let phoneNumber = String(columnValues)
-          console.log(typeof phoneNumber)
           phoneNumber = parsePhoneNumber(phoneNumber, this.defaultCountryCode)
           if (phoneNumber.isValid()) {
             // check if the number exists in the phones array
@@ -330,6 +331,24 @@ export default {
     this.getMessages()
   },
   methods: {
+    insertColumn(column) {
+      const textarea = this.$refs.textarea_sms_text.$refs.input
+      const sentence = textarea.value
+      const len = sentence.length
+      let pos = textarea.selectionStart
+      if (pos === undefined) {
+        pos = 0
+      }
+
+      const before = sentence.substr(0, pos)
+      const after = sentence.substr(pos, len)
+
+      this.sms_text = `${before}<<${column}>>${after}`
+
+      this.$nextTick().then(() => {
+        textarea.selectionStart = pos + column.length
+      })
+    },
     removePhoneNumber(phoneNumber) {
       this.phone_numbers = this.phone_numbers.filter(
         number => number !== phoneNumber,
@@ -354,8 +373,6 @@ export default {
       }
     },
     addPhoneNumber(value) {
-      // console.log(value)
-
       // if input is valid
       if (value.isValid) {
         // check if phone number already exists
@@ -371,12 +388,38 @@ export default {
     },
     sendMessage() {
       this.loading = true
-
       this.phone_numbers.forEach(number => {
-        this.loading = true
+        let smsText = this.sms_text
+
+        // get variable text in the message <<text>>
+        // find blocks of text that start with << and end with >>
+        const regex = /<<(.*?)>>/g
+        const text = this.sms_text.match(regex)
+        if (text) {
+          text.forEach(item => {
+            const column = item.replace('<<', '').replace('>>', '')
+            const rows = this.columnJson
+            const phoneColumn = this.selectedColumn
+            const row = rows.find(
+
+              // replace +256 with "" to get the phone number
+              roww => {
+                const tel = number.replace('+256', '')
+
+                // eslint-disable-next-line eqeqeq
+                return roww[phoneColumn] == tel
+              },
+            )
+            const columnValue = row[column]
+            if (columnValue) {
+              smsText = smsText.replace(item, columnValue)
+            }
+          })
+        }
+
         addDoc(collection(db, 'messages'), {
           phone: number,
-          sms_text: this.sms_text,
+          sms_text: smsText,
           status: 'pending',
           device_token: this.deviceToken,
           created_at: Timestamp.now(),
@@ -400,13 +443,12 @@ export default {
       const token = this.deviceToken
       const collectionQuery = query(collection(db, 'messages'), where('device_token', '==', token))
       onSnapshot(collectionQuery, querySnapshot => {
-        console.log(querySnapshot)
         this.messages = querySnapshot.docs.map(doc => ({
           message_id: doc.id,
           ...doc.data(),
         }))
 
-        // sort the messages by create_at
+        // sort the messages by created_at
 
         this.messages.sort((a, b) => b.created_at - a.created_at)
 
@@ -416,11 +458,10 @@ export default {
     timeDiff(time) {
       return TimeDiff(time)
     },
-    async onFileChange(e) {
+    async onFileChange() {
       // const { files } = e.target
       // if (!files.length) return
 
-      console.log(e)
       const data = await this.file.arrayBuffer()
 
       const workbook = XLSX.read(data)
@@ -436,7 +477,6 @@ export default {
         value: col,
       }))
       const json = XLSX.utils.sheet_to_json(sheet)
-      console.log(json)
       this.columnJson = json
     },
   },
