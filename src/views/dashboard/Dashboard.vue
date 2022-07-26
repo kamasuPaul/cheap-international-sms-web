@@ -65,6 +65,7 @@
               <v-chip
                 v-for="phone in phone_numbers"
                 :key="phone"
+                outlined
                 close
                 @click:close="removePhoneNumber(phone)"
               >
