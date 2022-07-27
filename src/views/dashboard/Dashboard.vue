@@ -89,8 +89,9 @@
           </v-row>
           <v-row>
             <v-col cols="12">
-              <label for="mobile">Message <span class="text-caption font-weight-black">({{ charactersLeft
-              }})</span></label>
+              <label
+                for="mobile"
+              >Message <span class="text-caption font-weight-black">({{ charactersLeft }})</span></label>
               <v-textarea
                 ref="textarea_sms_text"
                 v-model="sms_text"
@@ -143,6 +144,19 @@
             style="max-width: 300px"
           >
             {{ item.sms_text }}
+          </div>
+        </template>
+        <template v-slot:item.phone="{ item }">
+          <div
+            class="text-truncate"
+            style="max-width: 300px"
+          >
+            {{ item.phone }}<br /><span
+              v-if="item.carrier"
+              class="primary--text text-caption"
+            >{{
+              item.carrier
+            }}</span>
           </div>
         </template>
         <template v-slot:item.status="{ item }">
@@ -205,7 +219,13 @@ import * as XLSX from 'xlsx'
 import { initializeApp } from 'firebase/app'
 import {
   // eslint-disable-next-line no-unused-vars
-  getFirestore, addDoc, collection, onSnapshot, query, where, Timestamp,
+  getFirestore,
+  addDoc,
+  collection,
+  onSnapshot,
+  query,
+  where,
+  Timestamp,
 } from 'firebase/firestore'
 import TimeDiff from 'js-time-diff'
 import {
@@ -350,9 +370,7 @@ export default {
       })
     },
     removePhoneNumber(phoneNumber) {
-      this.phone_numbers = this.phone_numbers.filter(
-        number => number !== phoneNumber,
-      )
+      this.phone_numbers = this.phone_numbers.filter(number => number !== phoneNumber)
     },
     clear() {
       this.phone_numbers = []
