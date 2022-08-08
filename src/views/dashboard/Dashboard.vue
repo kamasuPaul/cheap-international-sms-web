@@ -7,6 +7,33 @@
       </v-card-title>
       <v-card-text>
         <v-form>
+          <div v-if="false">
+          <VuePhoneNumberInput
+            v-model="signPhone"
+            clearable
+            :default-country-code="defaultCountryCode"
+          />
+          <v-text-field
+            v-model="otpCode"
+            label="OTP Code"
+          ></v-text-field>
+          <div id="recapther"></div>
+          <v-btn
+            color="primary"
+            class="mt-2"
+            @click="signIn"
+          >
+            Send otp
+          </v-btn>
+          <v-btn
+            color="primary"
+            class="m-8"
+            :disabled="!otpCode"
+            @click="confirmOtpCode"
+          >
+            ConfirmOtp
+          </v-btn>
+          </div>
           <v-row>
             <v-col cols="12">
               <label for="mobile"> Add Phone numbers</label>
@@ -89,9 +116,8 @@
           </v-row>
           <v-row>
             <v-col cols="12">
-              <label
-                for="mobile"
-              >Message <span class="text-caption font-weight-black">({{ charactersLeft }})</span></label>
+              <label for="mobile">Message <span class="text-caption font-weight-black">({{ charactersLeft
+              }})</span></label>
               <v-textarea
                 ref="textarea_sms_text"
                 v-model="sms_text"
@@ -114,12 +140,21 @@
               class="d-flex flex-row-reverse"
             >
               <v-btn
+                class="mx-2"
                 color="primary"
                 :disabled="!sms_text || !phone_numbers.length > 0"
                 :loading="loading"
                 @click="sendMessage"
               >
                 Send
+              </v-btn>
+              <v-btn
+                color="primary"
+                :disabled="!sms_text || !phone_numbers.length > 0"
+                :loading="loading"
+                @click="selectDeviceDialog = true"
+              >
+                Send through a specic device
               </v-btn>
             </v-col>
           </v-row>
@@ -209,6 +244,46 @@
         </template>
       </v-data-table>
     </v-card>
+    <v-dialog
+      v-model="selectDeviceDialog"
+      scrollable
+      max-width="300px"
+    >
+      <v-card>
+        <v-card-title>Select device</v-card-title>
+        <v-divider></v-divider>
+        <v-card-text style="height: 300px;">
+          <v-radio-group
+            v-model="selectedDeviceToken"
+            column
+          >
+            <v-radio
+              v-for="device in devices"
+              :key="device.token"
+              :label="getDeviceLabel(device)"
+              :value="device.token"
+            ></v-radio>
+          </v-radio-group>
+        </v-card-text>
+        <v-divider></v-divider>
+        <v-card-actions>
+          <v-btn
+            color="blue darken-1"
+            text
+            @click="selectDeviceDialog = false"
+          >
+            Close
+          </v-btn>
+          <v-btn
+            color="blue darken-1"
+            text
+            @click="sendMessage"
+          >
+            Send
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -217,6 +292,7 @@ import VuePhoneNumberInput from 'vue-phone-number-input'
 import 'vue-phone-number-input/dist/vue-phone-number-input.css'
 import * as XLSX from 'xlsx'
 import { initializeApp } from 'firebase/app'
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth'
 import {
   // eslint-disable-next-line no-unused-vars
   getFirestore,
@@ -251,6 +327,7 @@ const app = initializeApp(firebaseConfig)
 // firebase.initializeApp(firebaseConfig)
 // const db = firebase.firestore()
 const db = getFirestore(app)
+const auth = getAuth(app)
 
 // const analytics = getAnalytics(app)
 export default {
@@ -259,6 +336,8 @@ export default {
   },
   data() {
     return {
+      otpCode: '000000',
+      signPhone: '+256750883001',
       loading: false,
       sms_text: '',
       phone_numbers: [],
@@ -296,6 +375,8 @@ export default {
       columnJson: null,
       defaultCountryCode: 'UG',
       deviceToken: '',
+      selectDeviceDialog: true,
+      selectedDeviceToken: '',
     }
   },
   computed: {
@@ -347,10 +428,76 @@ export default {
       localStorage.setItem('deviceToken', token)
       this.deviceToken = token
     }
+    window.recaptchaVerifier = new RecaptchaVerifier('recapther', {}, auth)
 
     this.getMessages()
   },
   methods: {
+    getDeviceLabel(device) {
+      // loop through device networks, create a coma seperated list of network names
+      let networks = ''
+      for (let i = 0; i < device.networks.length; i += 1) {
+        networks += `${device.networks[i].name}, `
+      }
+
+      return `${`${(device.token).substring(0, 8)} -`}${networks} - ${device.status}`
+    },
+    signIn() {
+      console.log('signing in')
+      const phoneNumber = parsePhoneNumber(this.signPhone, this.defaultCountryCode).formatInternational()
+      const appVerifier = window.recaptchaVerifier
+      signInWithPhoneNumber(auth, phoneNumber, appVerifier)
+        .then(confirmationResult => {
+          console.log('code sent')
+
+          // SMS sent. Prompt user to type the code from the message, then sign the
+          // user in with confirmationResult.confirm(code).
+          window.confirmationResult = confirmationResult
+
+          // ...
+        }).catch(error => {
+          console.log(error)
+
+          // Error; SMS not sent
+          // ...
+        })
+    },
+    async confirmOtpCode() {
+      const code = this.otpCode
+      window.confirmationResult.confirm(code).then(result => {
+        // User signed in successfully.
+        console.log(result)
+
+        // get user id
+        this.deviceToken = result.user.uid
+
+        result.user.getIdToken().then(token => {
+          console.log(token)
+
+          // hit the api to register the user
+          this.registerUser(token)
+        })
+      }).catch(error => {
+        console.log('error1')
+        console.log(error)
+
+        // User couldn't sign in (bad verification code?)
+        // ...
+      })
+    },
+    registerUser(token) {
+      const baseUrl = 'https://7fea-41-210-159-173.ngrok.io/api'
+
+      // set bearer token
+      this.$http.defaults.headers.common.Authorization = `Bearer ${token}`
+      this.axios.post(`${baseUrl}/users`).then(response => {
+        console.log(response)
+      }).catch(error => {
+        console.log(error)
+      }).finally(() => {
+        this.loading = false
+      })
+    },
     insertColumn(column) {
       const textarea = this.$refs.textarea_sms_text.$refs.input
       const sentence = textarea.value
@@ -441,8 +588,10 @@ export default {
           status: 'pending',
           device_token: this.deviceToken,
           created_at: Timestamp.now(),
+          send_via: this.selectedDeviceToken,
         }).finally(() => {
           this.loading = false
+          this.selectedDeviceToken = ''
         })
       })
     },
