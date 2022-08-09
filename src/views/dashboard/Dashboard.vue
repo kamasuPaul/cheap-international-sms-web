@@ -8,31 +8,31 @@
       <v-card-text>
         <v-form>
           <div v-if="false">
-          <VuePhoneNumberInput
-            v-model="signPhone"
-            clearable
-            :default-country-code="defaultCountryCode"
-          />
-          <v-text-field
-            v-model="otpCode"
-            label="OTP Code"
-          ></v-text-field>
-          <div id="recapther"></div>
-          <v-btn
-            color="primary"
-            class="mt-2"
-            @click="signIn"
-          >
-            Send otp
-          </v-btn>
-          <v-btn
-            color="primary"
-            class="m-8"
-            :disabled="!otpCode"
-            @click="confirmOtpCode"
-          >
-            ConfirmOtp
-          </v-btn>
+            <VuePhoneNumberInput
+              v-model="signPhone"
+              clearable
+              :default-country-code="defaultCountryCode"
+            />
+            <v-text-field
+              v-model="otpCode"
+              label="OTP Code"
+            ></v-text-field>
+            <div id="recapther"></div>
+            <v-btn
+              color="primary"
+              class="mt-2"
+              @click="signIn"
+            >
+              Send otp
+            </v-btn>
+            <v-btn
+              color="primary"
+              class="m-8"
+              :disabled="!otpCode"
+              @click="confirmOtpCode"
+            >
+              ConfirmOtp
+            </v-btn>
           </div>
           <v-row>
             <v-col cols="12">
@@ -292,6 +292,7 @@ import VuePhoneNumberInput from 'vue-phone-number-input'
 import 'vue-phone-number-input/dist/vue-phone-number-input.css'
 import * as XLSX from 'xlsx'
 import { initializeApp } from 'firebase/app'
+// eslint-disable-next-line no-unused-vars
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth'
 import {
   // eslint-disable-next-line no-unused-vars
@@ -375,7 +376,7 @@ export default {
       columnJson: null,
       defaultCountryCode: 'UG',
       deviceToken: '',
-      selectDeviceDialog: true,
+      selectDeviceDialog: false,
       selectedDeviceToken: '',
     }
   },
@@ -428,7 +429,8 @@ export default {
       localStorage.setItem('deviceToken', token)
       this.deviceToken = token
     }
-    window.recaptchaVerifier = new RecaptchaVerifier('recapther', {}, auth)
+
+    // window.recaptchaVerifier = new RecaptchaVerifier('recapther', {}, auth)
 
     this.getMessages()
   },
@@ -552,6 +554,9 @@ export default {
       this.phone_numbers = [...this.phone_numbers]
     },
     sendMessage() {
+      const numItems = this.phone_numbers.length
+      let i = 0
+      this.selectDeviceDialog = false
       this.loading = true
       this.phone_numbers.forEach(number => {
         let smsText = this.sms_text
@@ -590,8 +595,12 @@ export default {
           created_at: Timestamp.now(),
           send_via: this.selectedDeviceToken,
         }).finally(() => {
-          this.loading = false
-          this.selectedDeviceToken = ''
+          // eslint-disable-next-line no-plusplus
+          if (++i === numItems) {
+            this.loading = false
+            this.selectedDeviceToken = ''
+            this.sms_text = ''
+          }
         })
       })
     },
