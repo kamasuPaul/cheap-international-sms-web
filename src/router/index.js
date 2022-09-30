@@ -26,6 +26,11 @@ const routes = [
     component: () => import('@/views/pages/about/About.vue'),
   },
   {
+    path: '/policy',
+    name: 'policy',
+    component: () => import('@/views/pages/Policy.vue'),
+  },
+  {
     path: '/login',
     name: 'auth-login',
     component: () => import('@/views/pages/Login.vue'),
