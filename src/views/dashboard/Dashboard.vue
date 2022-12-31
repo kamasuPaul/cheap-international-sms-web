@@ -154,7 +154,7 @@
                 :loading="loading"
                 @click="selectDeviceDialog = true"
               >
-                Send through a specic device
+                Send via
               </v-btn>
             </v-col>
           </v-row>
@@ -304,6 +304,10 @@ import {
   where,
   Timestamp,
 } from 'firebase/firestore'
+import {
+  getDatabase, ref, onValue, orderByChild,
+} from 'firebase/database'
+
 import TimeDiff from 'js-time-diff'
 import {
   // eslint-disable-next-line no-unused-vars
@@ -328,6 +332,7 @@ const app = initializeApp(firebaseConfig)
 // firebase.initializeApp(firebaseConfig)
 // const db = firebase.firestore()
 const db = getFirestore(app)
+const realtimeDb = getDatabase(app)
 const auth = getAuth(app)
 
 // const analytics = getAnalytics(app)
@@ -606,13 +611,31 @@ export default {
     },
     getDevices() {
       this.loading = true
-      onSnapshot(collection(db, 'users'), querySnapshot => {
-        this.devices = querySnapshot.docs.map(doc => ({
-          token: doc.id,
-          ...doc.data(),
-        }))
+      const devicesRef = query(ref(realtimeDb, 'users/'), orderByChild('status'))
+      onValue(devicesRef, snapshot => {
+        // eslint-disable-next-line no-unused-vars
+        const deviceList = []
+        snapshot.forEach(doc => {
+          deviceList.push({
+            token: doc.key,
+            ...doc.val(),
+          })
+        })
+
+        // reverse the device list
+        deviceList.reverse()
+        this.devices = [...new Set(deviceList)]
+
         this.loading = false
       })
+
+      // onSnapshot(collection(db, 'users'), querySnapshot => {
+      //   this.devices = querySnapshot.docs.map(doc => ({
+      //     token: doc.id,
+      //     ...doc.data(),
+      //   }))
+      //   this.loading = false
+      // })
     },
     getMessages() {
       this.loading = true
