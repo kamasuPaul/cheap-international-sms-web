@@ -18,7 +18,7 @@
             ></v-img>
 
             <h2 class="text-2xl font-weight-semibold">
-              Recommender
+              Sms Chimp
             </h2>
           </router-link>
         </v-card-title>
@@ -89,7 +89,7 @@
               color="primary"
               class="mt-6"
               :loading="loading"
-              @click="login"
+              @click="signIn"
             >
               Login
             </v-btn>
@@ -156,6 +156,7 @@
 // eslint-disable-next-line object-curly-newline
 import { mdiFacebook, mdiTwitter, mdiGithub, mdiGoogle, mdiEyeOutline, mdiEyeOffOutline } from '@mdi/js'
 import axios from 'axios'
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth'
 
 const socialLink = [
   {
@@ -249,6 +250,37 @@ export default {
           this.errors(res.response)
           this.loading = false
         })
+    },
+    async signIn() {
+      try {
+        const { email, password } = this.getUserInfo()
+        const auth = getAuth()
+        signInWithEmailAndPassword(auth, email, password)
+          .then(userCredential => {
+            // Signed up
+            const { user } = userCredential
+            console.log(user)
+          })
+          .catch(error => {
+            const errorCode = error.code
+            const errorMessage = error.message
+            console.log(errorCode)
+            console.log(errorMessage)
+          })
+        this.$router.push({ name: 'dashboard' })
+
+        // alert('Sign in successful!')
+      } catch (error) {
+        console.error('Error during sign-in:', error.message)
+        alert('Sign in failed. Check the console for details.')
+      }
+    },
+
+    getUserInfo() {
+      // Retrieve user information from your form or wherever you get it
+      const { name, email, password } = this.form.body // Replace with your user's name
+
+      return { name, email, password }
     },
   },
 }
