@@ -177,6 +177,7 @@ import {
   mdiHelpCircleOutline,
   mdiLogoutVariant,
 } from '@mdi/js'
+import { getAuth } from 'firebase/auth'
 
 export default {
   data() {
@@ -200,9 +201,11 @@ export default {
     }
   },
   mounted() {
-    // const user = this.$auth.user()
-    // this.user.name = user.name
-    // this.user.email = user.email
+    const auth = getAuth()
+
+    const { currentUser } = auth
+    this.user.name = currentUser.displayName
+    this.user.email = currentUser.email
   },
   methods: {
     /** logout */

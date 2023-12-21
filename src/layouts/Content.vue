@@ -68,7 +68,7 @@
       <div class="boxed-container w-full">
         <div class="mx-6 d-flex justify-space-between">
           <span>
-            &copy; Cheap Internal Sms by <a
+            &copy; Cheap Sms by <a
               href="https://kamasupaul.com"
               class="text-decoration-none"
               target="_blank"

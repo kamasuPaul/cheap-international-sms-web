@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
+import { getAuth } from 'firebase/auth'
 
 Vue.use(VueRouter)
 
@@ -12,10 +13,10 @@ const routes = [
     name: 'dashboard',
     component: () => import('@/views/dashboard/Dashboard.vue'),
 
-    // meta: {
-    //   title: 'Dashboard',
-    //   auth: true,
-    // },
+    meta: {
+      title: 'Dashboard',
+      protected: true,
+    },
   },
   {
     path: '/about',
@@ -69,9 +70,18 @@ const router = new VueRouter({
 })
 router.beforeEach((to, from, next) => {
   document.title = to.meta.title || 'Cheap International sms'
-  next()
-})
+  const auth = getAuth()
 
+  const { currentUser } = auth
+
+  const requiresAuth = to.matched.some(record => record.meta.protected)
+
+  if (requiresAuth && !currentUser) {
+    next('/login') // Redirect to login page if not authenticated
+  } else {
+    next()
+  }
+})
 Vue.router = router
 
 export default Vue.router

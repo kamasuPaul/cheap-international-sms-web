@@ -202,7 +202,7 @@
       </v-data-table>
     </v-card>
     <v-card
-      v-if="devices"
+      v-if="false"
       class="mt-20"
     >
       <v-card-title>Devices</v-card-title>
@@ -291,7 +291,7 @@
 import VuePhoneNumberInput from 'vue-phone-number-input'
 import 'vue-phone-number-input/dist/vue-phone-number-input.css'
 import * as XLSX from 'xlsx'
-import { initializeApp } from 'firebase/app'
+import { getApp } from 'firebase/app'
 // eslint-disable-next-line no-unused-vars
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth'
 import {
@@ -315,19 +315,8 @@ import {
   parsePhoneNumber,
 } from 'libphonenumber-js'
 
-const firebaseConfig = {
-  apiKey: 'AIzaSyBWQAsXqYmD2hdxKbfa2YLv5QTBx0ItLHs',
-  authDomain: 'cheap-internal-sms-app.firebaseapp.com',
-  databaseURL: 'https://cheap-internal-sms-app-default-rtdb.firebaseio.com',
-  projectId: 'cheap-internal-sms-app',
-  storageBucket: 'cheap-internal-sms-app.appspot.com',
-  messagingSenderId: '226478391897',
-  appId: '1:226478391897:web:0954e94fc2fac33195a748',
-  measurementId: 'G-K4N3K9MGG6',
-}
-
 // Initialize Firebase
-const app = initializeApp(firebaseConfig)
+const app = getApp()
 
 // firebase.initializeApp(firebaseConfig)
 // const db = firebase.firestore()
@@ -591,6 +580,7 @@ export default {
             }
           })
         }
+        const userId = getAuth().currentUser.uid
 
         addDoc(collection(db, 'messages'), {
           phone: number,
@@ -599,6 +589,7 @@ export default {
           device_token: this.deviceToken,
           created_at: Timestamp.now(),
           send_via: this.selectedDeviceToken,
+          user_id: userId,
         }).finally(() => {
           // eslint-disable-next-line no-plusplus
           if (++i === numItems) {
@@ -639,8 +630,12 @@ export default {
     },
     getMessages() {
       this.loading = true
-      const token = this.deviceToken
-      const collectionQuery = query(collection(db, 'messages'), where('device_token', '==', token))
+
+      // const token = this.deviceToken
+
+      const userId = getAuth().currentUser.uid
+
+      const collectionQuery = query(collection(db, 'messages'), where('user_id', '==', userId))
       onSnapshot(collectionQuery, querySnapshot => {
         this.messages = querySnapshot.docs.map(doc => ({
           message_id: doc.id,
