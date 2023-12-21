@@ -155,6 +155,7 @@
             class="ma-1 outlined"
             color="grey"
             plain
+            @click="logout"
           >
             Logout
           </v-btn>
@@ -165,8 +166,6 @@
 </template>
 
 <script>
-import axios from 'axios'
-
 import {
   mdiAccountOutline,
   mdiEmailOutline,
@@ -177,7 +176,7 @@ import {
   mdiHelpCircleOutline,
   mdiLogoutVariant,
 } from '@mdi/js'
-import { getAuth } from 'firebase/auth'
+import { getAuth, signOut } from 'firebase/auth'
 
 export default {
   data() {
@@ -211,18 +210,15 @@ export default {
     /** logout */
     logout() {
       this.logout_loading = true
-      this.$auth
-        .logout({
-          url: '/logout',
-          makeRequest: true,
-          redirect: { name: 'auth-login' },
-        })
-        .then(() => {
-          axios.defaults.headers.common.Authorization = null
-        })
-        .finally(() => {
-          this.logout_loading = false
-        })
+      const auth = getAuth()
+      signOut(auth).then(() => {
+        // this.$router.push({ name: 'auth-login' })
+      }).catch(error => {
+        // An error happened.
+        console.log(error)
+      }).finally(() => {
+        this.logout_loading = false
+      })
     },
   },
 }

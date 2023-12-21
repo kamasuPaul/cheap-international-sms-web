@@ -69,18 +69,24 @@ const router = new VueRouter({
   routes,
 })
 router.beforeEach((to, from, next) => {
-  document.title = to.meta.title || 'Cheap International sms'
-  const auth = getAuth()
-
-  const { currentUser } = auth
-
-  const requiresAuth = to.matched.some(record => record.meta.protected)
-
-  if (requiresAuth && !currentUser) {
-    next('/login') // Redirect to login page if not authenticated
-  } else {
-    next()
-  }
+  document.title = to.meta.title || 'Sms Chimp'
+  // eslint-disable-next-line semi, prefer-destructuring
+  const auth = getAuth();
+  auth.onAuthStateChanged(
+    user => {
+      const requiresAuth = to.matched.some(record => record.meta.protected)
+      if (!user && requiresAuth) {
+        // User is signed in.
+        next('/login') // Redirect to login page if not authenticated
+      } else if (user && !requiresAuth) {
+        if (to.path === '/login' || to.path === '/register') {
+          next('/dashboard')
+        }
+      } else {
+        next()
+      }
+    },
+  )
 })
 Vue.router = router
 

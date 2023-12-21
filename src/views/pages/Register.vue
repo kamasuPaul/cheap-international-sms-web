@@ -18,7 +18,7 @@
             ></v-img>
 
             <h2 class="text-2xl font-weight-semibold">
-              Cheap sms
+              Sms Chimp
             </h2>
           </router-link>
         </v-card-title>
@@ -197,9 +197,8 @@ export default {
   methods: {
     async register() {
       try {
-        const { email, password } = this.getUserInfo()
         const auth = getAuth()
-        createUserWithEmailAndPassword(auth, email, password)
+        createUserWithEmailAndPassword(auth, this.email, this.password)
           .then(userCredential => {
             // Signed up
             const { user } = userCredential
