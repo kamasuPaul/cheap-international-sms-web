@@ -14,22 +14,22 @@
               max-width="30px"
               alt="logo"
               contain
-              class="me-3"
+              class="me-3 "
             ></v-img>
 
             <h2 class="text-2xl font-weight-semibold">
-              Recommender
+              Cheap sms
             </h2>
           </router-link>
         </v-card-title>
 
         <!-- title -->
         <v-card-text>
-          <p class="d-flex text-xl font-weight-semibold text--primary mb-2 align-center justify-center">
-            University starts here 🚀
+          <p class="text-2xl font-weight-semibold text--primary mb-2">
+            Adventure starts here 🚀
           </p>
           <p class="mb-2">
-            Make your university registeration easy and fun!
+            Sms marketing automation
           </p>
         </v-card-text>
 
@@ -37,42 +37,31 @@
         <v-card-text>
           <v-form>
             <v-text-field
-              v-model="form.body.name"
+              v-model="name"
               outlined
               label="Name"
               placeholder="JohnDoe"
-              :error-messages="form.errors.name"
+              hide-details
+              class="mb-3"
             ></v-text-field>
 
             <v-text-field
-              v-model="form.body.email"
+              v-model="email"
               outlined
               label="Email"
               placeholder="john@example.com"
-              :error-messages="form.errors.email"
+              hide-details
+              class="mb-3"
             ></v-text-field>
 
             <v-text-field
-              v-model="form.body.password"
-              hint="atleast 6 characters"
-              :rules="[rules.required, rules.min]"
+              v-model="password"
               outlined
               :type="isPasswordVisible ? 'text' : 'password'"
               label="Password"
               placeholder="············"
               :append-icon="isPasswordVisible ? icons.mdiEyeOffOutline : icons.mdiEyeOutline"
-              :error-messages="form.errors.password"
-              @click:append="isPasswordVisible = !isPasswordVisible"
-            ></v-text-field>
-            <v-text-field
-              v-model="form.body.password_confirmation"
-              :rules="[rules.required, rules.min]"
-              outlined
-              :type="isPasswordVisible ? 'text' : 'password'"
-              label="Confirm password"
-              placeholder="············"
-              :append-icon="isPasswordVisible ? icons.mdiEyeOffOutline : icons.mdiEyeOutline"
-              :error-messages="form.errors.password_confirmation"
+              hide-details
               @click:append="isPasswordVisible = !isPasswordVisible"
             ></v-text-field>
 
@@ -91,7 +80,6 @@
               block
               color="primary"
               class="mt-6"
-              :loading="loading"
               @click="register"
             >
               Sign Up
@@ -101,8 +89,10 @@
 
         <!-- create new account  -->
         <v-card-text class="d-flex align-center justify-center flex-wrap mt-2">
-          <span class="me-2"> Already have an account? </span>
-          <router-link :to="{ name: 'auth-login' }">
+          <span class="me-2">
+            Already have an account?
+          </span>
+          <router-link :to="{ name:'pages-login' }">
             Sign in instead
           </router-link>
         </v-card-text>
@@ -122,7 +112,7 @@
             icon
             class="ms-1"
           >
-            <v-icon :color="$vuetify.theme.dark ? link.colorInDark : link.color">
+            <v-icon :color="$vuetify.theme.dark ? link.colorInDark:link.color">
               {{ link.icon }}
             </v-icon>
           </v-btn>
@@ -134,8 +124,8 @@
     <img
       class="auth-mask-bg"
       height="190"
-      :src="require(`@/assets/images/misc/mask-${$vuetify.theme.dark ? 'dark' : 'light'}.png`)"
-    />
+      :src="require(`@/assets/images/misc/mask-${$vuetify.theme.dark ? 'dark':'light'}.png`)"
+    >
 
     <!-- tree -->
     <v-img
@@ -156,99 +146,78 @@
 </template>
 
 <script>
+
 // eslint-disable-next-line object-curly-newline
 import { mdiFacebook, mdiTwitter, mdiGithub, mdiGoogle, mdiEyeOutline, mdiEyeOffOutline } from '@mdi/js'
-import axios from 'axios'
+import { ref } from '@vue/composition-api'
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
 
-// import { ref } from '@vue/composition-api'
-const socialLink = [
-  {
-    icon: mdiFacebook,
-    color: '#4267b2',
-    colorInDark: '#4267b2',
-  },
-  {
-    icon: mdiTwitter,
-    color: '#1da1f2',
-    colorInDark: '#1da1f2',
-  },
-  {
-    icon: mdiGithub,
-    color: '#272727',
-    colorInDark: '#fff',
-  },
-  {
-    icon: mdiGoogle,
-    color: '#db4437',
-    colorInDark: '#db4437',
-  },
-]
 export default {
-  data() {
+  setup() {
+    const isPasswordVisible = ref(false)
+    const name = ref('')
+    const email = ref('')
+    const password = ref('')
+    const socialLink = [
+      {
+        icon: mdiFacebook,
+        color: '#4267b2',
+        colorInDark: '#4267b2',
+      },
+      {
+        icon: mdiTwitter,
+        color: '#1da1f2',
+        colorInDark: '#1da1f2',
+      },
+      {
+        icon: mdiGithub,
+        color: '#272727',
+        colorInDark: '#fff',
+      },
+      {
+        icon: mdiGoogle,
+        color: '#db4437',
+        colorInDark: '#db4437',
+      },
+    ]
+
     return {
-      isPasswordVisible: false,
-      loading: false,
+      isPasswordVisible,
+      name,
+      email,
+      password,
       socialLink,
+
       icons: {
         mdiEyeOutline,
         mdiEyeOffOutline,
       },
-      rules: {
-        required: value => !!value || 'Required.',
-        min: v => v.length >= 6 || 'Min 6 characters',
-        emailMatch: () => "The email and password you entered don't match",
-      },
-      form: {
-        body: {
-          name: '',
-          email: '',
-          password: '',
-          password_confirmation: '',
-        },
-
-        errors: {},
-        remember: false,
-        fetchUser: false,
-        autoLogin: true,
-        staySignedIn: true,
-      },
     }
   },
   methods: {
-    errors(res) {
-      this.form.errors = res.data.errors // Object.fromEntries(res.data.errors.map(item => [item.field, item.msg]))
-    },
-    register() {
-      this.loading = true
-      this.$auth
-        .register({
-          data: this.form.body, // Axios
-          url: '/register', // URL
-          redirect: null,
-          remember: true, // this.form.remember ? '{"name": "Redirect"}' : null,
-          fetchUser: this.form.fetchUser,
+    async register() {
+      try {
+        const { email, password } = this.getUserInfo()
+        const auth = getAuth()
+        createUserWithEmailAndPassword(auth, email, password)
+          .then(userCredential => {
+            // Signed up
+            const { user } = userCredential
+            console.log(user)
+          })
+          .catch(error => {
+            const errorCode = error.code
+            const errorMessage = error.message
+            console.log(errorCode)
+            console.log(errorMessage)
+          })
+        this.$router.push({ name: 'dashboard' })
 
-          // autoLogin: this.form.autoLogin,
-          staySignedIn: this.form.staySignedIn,
-        })
-        .then(res => {
-          const { token } = res.data.data
-          // eslint-disable-next-line dot-notation
-          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-          this.$auth.token(null, token, true)
-          this.$auth
-            .user({
-              id: 1,
-              first_name: this.form.body.name,
-              email: this.form.body.email,
-              type: 'user',
-            })
-          this.$router.push({ name: 'dashboard' })
-        })
-        .then(null, res => {
-          this.errors(res.response)
-          this.loading = false
-        })
+        // alert('Registration successful!')
+      } catch (error) {
+        console.error('Error during registration:', error.message)
+        alert('Registration failed. Check the console for details.')
+      }
     },
   },
 }
