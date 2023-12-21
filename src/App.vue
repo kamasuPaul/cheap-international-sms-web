@@ -14,14 +14,14 @@ import LayoutBlank from '@/layouts/Blank.vue'
 import LayoutContent from '@/layouts/Content.vue'
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyBWQAsXqYmD2hdxKbfa2YLv5QTBx0ItLHs',
-  authDomain: 'cheap-internal-sms-app.firebaseapp.com',
-  databaseURL: 'https://cheap-internal-sms-app-default-rtdb.firebaseio.com',
-  projectId: 'cheap-internal-sms-app',
-  storageBucket: 'cheap-internal-sms-app.appspot.com',
-  messagingSenderId: '226478391897',
-  appId: '1:226478391897:web:0954e94fc2fac33195a748',
-  measurementId: 'G-K4N3K9MGG6',
+  apiKey: process.env.VUE_APP_FIREBASE_API_KEY,
+  authDomain: process.env.VUE_APP_FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.VUE_APP_FIREBASE_DATABASE_URL,
+  projectId: process.env.VUE_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.VUE_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.VUE_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VUE_APP_FIREBASE_APP_ID,
+  measurementId: process.env.VUE_APP_FIREBASE_MEASUREMENT_ID,
 }
 
 // Initialize Firebase
