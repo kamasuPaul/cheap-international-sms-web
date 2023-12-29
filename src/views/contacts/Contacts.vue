@@ -1,15 +1,53 @@
 <template>
   <v-card class="mt-20">
+    <!-- Table header with buttons -->
     <v-card-title>
       <v-row justify="space-between">
-        <v-col cols="6">My contacts</v-col>
+        <v-col cols="6">
+          My contacts
+        </v-col>
         <v-col cols="6" align="end">
-          <v-btn color="primary" dark class="mb-2" @click="(() => { dialog = true; contact = {}; phoneNumber = '' })">
-            New Contact
-          </v-btn>
+          <v-row align="end">
+            <v-btn-toggle borderless>
+              <v-btn value="left" color="primary" @click="(() => { dialog = true; contact = {}; phoneNumber = '' })">
+                <span class="hidden-sm-and-down">New Contact</span>
+
+                <v-icon right>
+                  mdi-format-align-left
+                </v-icon>
+              </v-btn>
+
+              <v-btn value="center" @click="(() => { importDialog = true; contact = {}; phoneNumber = '' })">
+                <span class="hidden-sm-and-down">Import</span>
+
+                <v-icon right>
+                  mdi-format-align-center
+                </v-icon>
+              </v-btn>
+            </v-btn-toggle>
+            <v-btn-toggle>
+              <v-btn value="right">
+                <span class="hidden-sm-and-down">New group</span>
+
+                <v-icon right>
+                  mdi-format-align-right
+                </v-icon>
+              </v-btn>
+
+              <v-btn value="justify">
+                <span class="hidden-sm-and-down">New tags</span>
+
+                <v-icon right>
+                  mdi-format-align-justify
+                </v-icon>
+              </v-btn>
+            </v-btn-toggle>
+          </v-row>
         </v-col>
       </v-row>
     </v-card-title>
+
+    <!-- Contacts list table -->
     <v-data-table :headers="headers" :items="contacts" :items-per-page="30" class="elevation-1">
       <template v-slot:item.group_id="{ item }">
         {{ getGroupName(item.group_id) }}
@@ -30,6 +68,8 @@
         </v-btn>
       </template>
     </v-data-table>
+
+    <!-- Create contact dialog -->
     <v-dialog v-model="dialog" max-width="500px">
       <v-card>
         <v-card-title>
@@ -79,6 +119,77 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- import contacts dialog -->
+    <v-dialog v-model="importDialog" max-width="500px">
+      <v-card>
+        <v-card-title>
+          <span class="text-h5">Import multiple contacts</span>
+        </v-card-title>
+
+        <v-card-text>
+          <v-form>
+            <v-container>
+              <v-row>
+                <v-col cols="12">
+                  <label for="mobile">import</label>
+                  <v-file-input v-model="file" hide-input label="Import Excel file" outlined dense @change="onFileChange">
+                  </v-file-input>
+                </v-col>
+                <v-col v-if="selectable_columns.length > 0">
+                  <v-row>
+                    <v-col cols="6">
+                      <label for="mobile">Column with telephone</label>
+                      <v-select v-model="selectedPhoneColumn" :items="selectable_columns" label="phone number field" dense
+                        outlined :disabled="!file"></v-select>
+                    </v-col>
+                    <v-col cols="6">
+                      <label for="mobile">Column with names</label>
+                      <v-select v-model="selectedNameColumn" :items="selectable_columns" label="Name field" dense outlined
+                        :disabled="!file"></v-select>
+                    </v-col>
+                  </v-row>
+                </v-col>
+                <v-col cols="12">
+                  <v-data-table :headers="importHeaders" :items="importContacts" :items-per-page="30" class="elevation-1">
+                    <template v-slot:item.actions="{ item }">
+                      <v-btn small icon @click="deleteContact(item)">
+                        <v-icon>{{ icons.mdiDelete }}</v-icon>
+                      </v-btn>
+                    </template>
+                  </v-data-table>
+                </v-col>
+                <v-col cols="12">
+                  <v-select v-model="contact.group_id" dense :items="groups" label="Group"></v-select>
+                </v-col>
+
+                <v-col cols="12">
+                  <span class="subheading">Tags</span>
+                  <v-chip-group v-model="contact.tags" multiple column active-class="primary--text">
+                    <v-chip v-for="tag in tags" :key="tag" :value="tag">
+                      {{ tag }}
+                    </v-chip>
+                  </v-chip-group>
+                </v-col>
+              </v-row>
+            </v-container>
+          </v-form>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn plain @click="importDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn color="primary" variant="text" :loading="loading" :disabled="!importFormValid"
+            @click="saveImportedContacts">
+            Import
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- notification snack bar -->
     <v-snackbar v-model="snackbar" left>
       {{ message }}
 
@@ -88,6 +199,8 @@
         </v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Delete contact confirm dialog -->
     <v-dialog v-model="deleteDialog" max-width="290">
       <v-card>
         <v-card-title class="text-h5">
@@ -132,11 +245,13 @@ import {
 } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 import TimeDiff from 'js-time-diff'
-// eslint-disable-next-line object-curly-newline
 import {
   mdiDelete,
   mdiPencil,
 } from '@mdi/js'
+import {
+  parsePhoneNumber,
+} from 'libphonenumber-js'
 
 const app = getApp()
 const db = getFirestore(app)
@@ -150,6 +265,17 @@ export default {
         mdiPencil,
         mdiDelete,
       },
+      importHeaders: [
+        {
+          text: 'Phone',
+          align: 'start',
+          sortable: false,
+          value: 'phone',
+        },
+        { text: 'Name', value: 'name' },
+        { text: 'Actions', value: 'actions', sortable: false },
+
+      ],
     }
   },
   data() {
@@ -158,6 +284,7 @@ export default {
       snackbar: false,
       dialog: false,
       deleteDialog: false,
+      importDialog: false,
       loading: false,
       contacts: [],
       headers: [
@@ -174,11 +301,19 @@ export default {
 
       ],
       contact: {
+        tags: [],
+        group_id: 'default',
       },
       phoneNumber: '',
       groups: [{ text: 'Default', value: 'default' }],
       tags: ['NewCustomer', 'VIPCustomer', 'PreferredCustomer', 'HighPriority', 'InactiveCustomer', 'Prospect', 'FrequentBuyer', 'SpecialOffer', 'ProductInterest', 'EventAttendee'],
       selectedContact: {},
+      file: null,
+      columnJson: {},
+      selectable_columns: [],
+      selectedNameColumn: null,
+      selectedPhoneColumn: null,
+      importContacts: [],
     }
   },
   computed: {
@@ -189,11 +324,58 @@ export default {
 
       return false
     },
+    importFormValid() {
+      if ((this.importContacts.length > 0) && this.contact.group_id) {
+        return true
+      }
+
+      return false
+    },
+  },
+  watch: {
+    selectedPhoneColumn() {
+      if (this.selectedPhoneColumn && this.selectedNameColumn) {
+        this.processContacts()
+      }
+    },
+    selectedNameColumn() {
+      if (this.selectedPhoneColumn && this.selectedNameColumn) {
+        this.processContacts()
+      }
+    },
   },
   mounted() {
     this.getContacts()
   },
   methods: {
+    processContacts() {
+      this.importContacts = []
+
+      // loop through columnJson
+      for (let i = 0; i < this.columnJson.length; i += 1) {
+        const columnValues = this.columnJson[i][this.selectedPhoneColumn]
+        const nameValue = this.columnJson[i][this.selectedNameColumn]
+
+        if (columnValues === undefined) {
+          // eslint-disable-next-line no-continue
+          continue
+        }
+
+        let phoneNumber = String(columnValues)
+        phoneNumber = parsePhoneNumber(phoneNumber, 'UG')
+        if (phoneNumber.isValid()) {
+          // check if the number exists in the phones array
+          // if (!this.phone_numbers.includes(phoneNumber.number)) {
+          const contact = {
+            phone: phoneNumber.number,
+            name: nameValue,
+          }
+          this.importContacts.push(contact)
+
+          // }
+        }
+      }
+    },
     addPhoneNumber(value) {
       // if input is valid
       if (value.isValid) {
@@ -221,6 +403,8 @@ export default {
       return TimeDiff(time)
     },
     async onFileChange() {
+      console.log('called')
+
       // const { files } = e.target
       // if (!files.length) return
 
@@ -329,6 +513,23 @@ export default {
           this.loading = false
           this.snackbar = true
         })
+    },
+    saveImportedContacts() {
+      this.loading = true
+      const contacts = this.importContacts
+      contacts.forEach(item => {
+        const contact = {
+          phone: item.phone,
+          name: item.name,
+          tags: this.contact.tags ? this.contact.tags : [],
+          group_id: this.contact.group_id,
+          created_at: Timestamp.now(),
+          updated_at: Timestamp.now(),
+          user_id: getAuth().currentUser.uid,
+        }
+        addDoc(collection(db, 'contacts'), contact)
+      })
+      this.importDialog = false
     },
     getGroupName(id) {
       if (id === 'default') {
