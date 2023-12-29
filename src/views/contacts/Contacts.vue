@@ -7,42 +7,29 @@
           My contacts
         </v-col>
         <v-col cols="6" align="end">
-          <v-row align="end">
-            <v-btn-toggle borderless>
-              <v-btn value="left" color="primary" @click="(() => { dialog = true; contact = {}; phoneNumber = '' })">
-                <span class="hidden-sm-and-down">New Contact</span>
+          <v-btn value="center" color="primary mr-1"
+            @click="(() => { importDialog = true; contact = {}; phoneNumber = '' })">
+            <span class="hidden-sm-and-down">Import</span>
 
+            <v-icon right>
+              {{ icons.mdiAttachment }}
+            </v-icon>
+          </v-btn>
+          <v-menu offset-y>
+            <template v-slot:activator="{ on }">
+              <v-btn class="secondary" v-on="on">
+                New
                 <v-icon right>
-                  mdi-format-align-left
+                  {{ icons.mdiArrowDownDropCircleOutline }}
                 </v-icon>
               </v-btn>
-
-              <v-btn value="center" @click="(() => { importDialog = true; contact = {}; phoneNumber = '' })">
-                <span class="hidden-sm-and-down">Import</span>
-
-                <v-icon right>
-                  mdi-format-align-center
-                </v-icon>
-              </v-btn>
-            </v-btn-toggle>
-            <v-btn-toggle>
-              <v-btn value="right" @click="(() => { addGroupDialog = true; })">
-                <span class="hidden-sm-and-down">New group</span>
-
-                <v-icon right>
-                  mdi-format-align-right
-                </v-icon>
-              </v-btn>
-
-              <v-btn value="justify">
-                <span class="hidden-sm-and-down" @click="(() => { addTagDialog = true; })">New tag</span>
-
-                <v-icon right>
-                  mdi-format-align-justify
-                </v-icon>
-              </v-btn>
-            </v-btn-toggle>
-          </v-row>
+            </template>
+            <v-list>
+              <v-list-item v-for="(item, index) in items" :key="index" @click="handleItemClick(item)">
+                <v-list-item-title>{{ item }}</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
         </v-col>
       </v-row>
     </v-card-title>
@@ -328,6 +315,8 @@ import TimeDiff from 'js-time-diff'
 import {
   mdiDelete,
   mdiPencil,
+  mdiArrowDownDropCircleOutline,
+  mdiAttachment,
 } from '@mdi/js'
 import {
   parsePhoneNumber,
@@ -344,7 +333,10 @@ export default {
       icons: {
         mdiPencil,
         mdiDelete,
+        mdiArrowDownDropCircleOutline,
+        mdiAttachment,
       },
+      items: ['Add new contact', 'Add new group', 'Add new tag'],
       importHeaders: [
         {
           text: 'Phone',
@@ -442,6 +434,17 @@ export default {
     this.getTags()
   },
   methods: {
+    handleItemClick(item) {
+      if (item === 'Add new contact') {
+        this.dialog = true; this.contact = {}; this.phoneNumber = ''
+      }
+      if (item === 'Add new group') {
+        this.addGroupDialog = true
+      }
+      if (item === 'Add new tag') {
+        this.addTagDialog = true
+      }
+    },
     processContacts() {
       this.importContacts = []
 
