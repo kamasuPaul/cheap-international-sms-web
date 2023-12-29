@@ -7,35 +7,8 @@
       </v-card-title>
       <v-card-text>
         <v-form>
-          <div v-if="false">
-            <VuePhoneNumberInput
-              v-model="signPhone"
-              clearable
-              :default-country-code="defaultCountryCode"
-            />
-            <v-text-field
-              v-model="otpCode"
-              label="OTP Code"
-            ></v-text-field>
-            <div id="recapther"></div>
-            <v-btn
-              color="primary"
-              class="mt-2"
-              @click="signIn"
-            >
-              Send otp
-            </v-btn>
-            <v-btn
-              color="primary"
-              class="m-8"
-              :disabled="!otpCode"
-              @click="confirmOtpCode"
-            >
-              ConfirmOtp
-            </v-btn>
-          </div>
           <v-row>
-            <v-col cols="12">
+            <v-col cols="4">
               <label for="mobile"> Add Phone numbers</label>
               <VuePhoneNumberInput
                 v-model="phoneNumber"
@@ -45,8 +18,19 @@
                 @keyup.enter.prevent="clear"
               />
             </v-col>
-            <v-col cols="3">
-              <label for="mobile">import</label>
+            <v-col cols="4">
+              <label for="mobile"> Use saved contacts</label>
+
+              <v-select
+                v-model="selectedGroupId"
+                dense
+                :items="groups"
+                label="Select contacts group"
+                outlined
+              ></v-select>
+            </v-col>
+            <v-col cols="4">
+              <label for="mobile">Import phone numbers</label>
               <v-file-input
                 v-model="file"
                 hide-input
@@ -57,7 +41,10 @@
               >
               </v-file-input>
             </v-col>
-            <v-col v-if="file">
+            <v-col
+              v-if="file"
+              cols="3"
+            >
               <label for="mobile">Column with telphone nos</label>
               <v-select
                 v-model="selectedColumn"
@@ -149,6 +136,7 @@
                 Send
               </v-btn>
               <v-btn
+                v-if="false"
                 color="primary"
                 :disabled="!sms_text || !phone_numbers.length > 0"
                 :loading="loading"
@@ -372,6 +360,9 @@ export default {
       deviceToken: '',
       selectDeviceDialog: false,
       selectedDeviceToken: '',
+      contacts: [],
+      groups: [],
+      selectedGroupId: '',
     }
   },
   computed: {
@@ -380,6 +371,16 @@ export default {
       const limit = 160
 
       return `${limit - char} / ${limit} characters left`
+    },
+    selectedContacts() {
+      const groupId = this.selectedGroupId
+      const { contacts } = this
+      if (groupId === 'all') {
+        return contacts
+      }
+      const filteredData = contacts.filter(obj => obj.group_id === groupId)
+
+      return filteredData
     },
   },
   watch: {
@@ -409,8 +410,13 @@ export default {
       // update token in local storage
       localStorage.setItem('deviceToken', newToken)
     },
+    selectedContacts(newContacts) {
+      this.phone_numbers = newContacts.map(obj => obj.phone)
+    },
   },
   mounted() {
+    this.getGroups()
+    this.getContacts()
     this.getDevices()
 
     // generate 6 digit random string
@@ -672,6 +678,49 @@ export default {
       }))
       const json = XLSX.utils.sheet_to_json(sheet)
       this.columnJson = json
+    },
+    getGroups() {
+      this.loading = true
+      const userId = getAuth().currentUser.uid
+      const collectionQuery = query(collection(db, 'groups'), where('user_id', '==', userId))
+      onSnapshot(collectionQuery, querySnapshot => {
+        this.groups = querySnapshot.docs.map(document => ({
+          group_id: document.id,
+          ...document.data(),
+          text: document.data().name,
+          value: document.id,
+        }))
+
+        // sort the groups by created_at
+
+        this.groups.sort((a, b) => b.created_at - a.created_at)
+        this.groups.push(
+          {
+            text: 'Default', name: 'Default', value: 'default', created_at: Timestamp.now(),
+          },
+          {
+            text: 'All contacts', name: 'All contacts', value: 'all', created_at: Timestamp.now(),
+          },
+        )
+        this.loading = false
+      })
+    },
+    getContacts() {
+      this.loading = true
+      const userId = getAuth().currentUser.uid
+      const collectionQuery = query(collection(db, 'contacts'), where('user_id', '==', userId))
+      onSnapshot(collectionQuery, querySnapshot => {
+        this.contacts = querySnapshot.docs.map(document => ({
+          contact_id: document.id,
+          ...document.data(),
+        }))
+
+        // sort the messages by created_at
+
+        this.contacts.sort((a, b) => b.created_at - a.created_at)
+
+        this.loading = false
+      })
     },
   },
 }
