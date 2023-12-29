@@ -26,7 +26,7 @@
               </v-btn>
             </v-btn-toggle>
             <v-btn-toggle>
-              <v-btn value="right">
+              <v-btn value="right" @click="(() => { addGroupDialog = true; })">
                 <span class="hidden-sm-and-down">New group</span>
 
                 <v-icon right>
@@ -69,7 +69,7 @@
       </template>
     </v-data-table>
 
-    <!-- Create contact dialog -->
+    <!-- New contact dialog -->
     <v-dialog v-model="dialog" max-width="500px">
       <v-card>
         <v-card-title>
@@ -224,6 +224,37 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Add group dialog -->
+    <v-dialog v-model="addGroupDialog" max-width="290">
+      <v-card>
+        <v-card-title>
+          <span class="text-h6">Add new group</span>
+        </v-card-title>
+
+        <v-card-text>
+          <v-form>
+            <v-container>
+              <v-row>
+                <v-col cols="12">
+                  <v-text-field v-model="group.name" dense label="Group name"></v-text-field>
+                </v-col>
+              </v-row>
+            </v-container>
+          </v-form>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn plain @click="addGroupDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn color="primary" variant="text" :loading="loading" :disabled="!group.name" @click="saveGroup">
+            Add group
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-card>
 </template>
 <script>
@@ -285,6 +316,7 @@ export default {
       dialog: false,
       deleteDialog: false,
       importDialog: false,
+      addGroupDialog: false,
       loading: false,
       contacts: [],
       headers: [
@@ -304,8 +336,14 @@ export default {
         tags: [],
         group_id: 'default',
       },
+      group: {
+        name: null,
+      },
+      tag: {
+        name: null,
+      },
       phoneNumber: '',
-      groups: [{ text: 'Default', value: 'default' }],
+      groups: [],
       tags: ['NewCustomer', 'VIPCustomer', 'PreferredCustomer', 'HighPriority', 'InactiveCustomer', 'Prospect', 'FrequentBuyer', 'SpecialOffer', 'ProductInterest', 'EventAttendee'],
       selectedContact: {},
       file: null,
@@ -346,6 +384,7 @@ export default {
   },
   mounted() {
     this.getContacts()
+    this.getGroups()
   },
   methods: {
     processContacts() {
@@ -396,6 +435,27 @@ export default {
 
         this.contacts.sort((a, b) => b.created_at - a.created_at)
 
+        this.loading = false
+      })
+    },
+    getGroups() {
+      this.loading = true
+      const userId = getAuth().currentUser.uid
+      const collectionQuery = query(collection(db, 'groups'), where('user_id', '==', userId))
+      onSnapshot(collectionQuery, querySnapshot => {
+        this.groups = querySnapshot.docs.map(document => ({
+          group_id: document.id,
+          ...document.data(),
+          text: document.data().name,
+          value: document.id,
+        }))
+
+        // sort the groups by created_at
+
+        this.groups.sort((a, b) => b.created_at - a.created_at)
+        this.groups.push(
+          { text: 'Default', value: 'default', created_at: Timestamp.now() },
+        )
         this.loading = false
       })
     },
@@ -472,7 +532,7 @@ export default {
       addDoc(collection(db, 'contacts'), {
         phone: this.contact.phone,
         name: this.contact.name,
-        tags: this.contact.tags,
+        tags: this.contact.tags ? this.contact.tags : [],
         group_id: this.contact.group_id,
         created_at: Timestamp.now(),
         user_id: getAuth().currentUser.uid,
@@ -531,9 +591,36 @@ export default {
       })
       this.importDialog = false
     },
+    saveGroup() {
+      this.loading = true
+      addDoc(collection(db, 'groups'), {
+        name: this.group.name,
+        created_at: Timestamp.now(),
+        updated_at: Timestamp.now(),
+        user_id: getAuth().currentUser.uid,
+      })
+        .then(() => {
+          this.message = 'Group successfully added'
+
+          // this.addGroupDialog = false
+        })
+        .catch(error => {
+          console.error('Error adding group:', error)
+          this.message = 'Error adding group'
+        })
+        .finally(() => {
+          this.loading = false
+          this.snackbar = true
+          this.addGroupDialog = false
+        })
+    },
     getGroupName(id) {
       if (id === 'default') {
         return 'Default'
+      }
+      const group = this.groups.find(obj => obj.group_id === id)
+      if (group) {
+        return group.name
       }
 
       return ''
