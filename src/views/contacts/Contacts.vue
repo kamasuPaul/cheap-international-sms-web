@@ -106,7 +106,7 @@
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn plain @click="close">
+          <v-btn plain @click="dialog = false">
             Cancel
           </v-btn>
           <v-btn v-if="contact.contact_id" color="primary" variant="text" :loading="loading" :disabled="!formValid"
@@ -242,6 +242,15 @@
               </v-row>
             </v-container>
           </v-form>
+          <v-col cols="12">
+            <v-data-table :headers="otherHeaders" :items="groups" :items-per-page="30" class="elevation-1">
+              <template v-slot:item.actions="{ item }">
+                <v-btn v-if="item.name != 'Default'" small icon @click="deleteGroup(item.group_id)">
+                  <v-icon>{{ icons.mdiDelete }}</v-icon>
+                </v-btn>
+              </template>
+            </v-data-table>
+          </v-col>
         </v-card-text>
 
         <v-card-actions>
@@ -271,6 +280,15 @@
                   <v-text-field v-model="tag.name" dense label="Tag name"></v-text-field>
                 </v-col>
               </v-row>
+              <v-col cols="12">
+                <v-data-table :headers="otherHeaders" :items="tagss" :items-per-page="30" class="elevation-1">
+                  <template v-slot:item.actions="{ item }">
+                    <v-btn v-if="item.name != 'Default'" small icon @click="deleteTag(item.tag_id)">
+                      <v-icon>{{ icons.mdiDelete }}</v-icon>
+                    </v-btn>
+                  </template>
+                </v-data-table>
+              </v-col>
             </v-container>
           </v-form>
         </v-card-text>
@@ -336,7 +354,10 @@ export default {
         },
         { text: 'Name', value: 'name' },
         { text: 'Actions', value: 'actions', sortable: false },
-
+      ],
+      otherHeaders: [
+        { text: 'Name', value: 'name' },
+        { text: 'Actions', value: 'actions', sortable: false },
       ],
     }
   },
@@ -355,7 +376,7 @@ export default {
         {
           text: 'Phone',
           align: 'start',
-          sortable: false,
+          sortable: true,
           value: 'phone',
         },
         { text: 'Name', value: 'name' },
@@ -376,6 +397,7 @@ export default {
       },
       phoneNumber: '',
       groups: [],
+      tagss: [],
       tags: ['NewCustomer', 'VIPCustomer', 'PreferredCustomer', 'HighPriority', 'InactiveCustomer', 'Prospect', 'FrequentBuyer', 'SpecialOffer', 'ProductInterest', 'EventAttendee'],
       selectedContact: {},
       file: null,
@@ -487,7 +509,9 @@ export default {
 
         this.groups.sort((a, b) => b.created_at - a.created_at)
         this.groups.push(
-          { text: 'Default', value: 'default', created_at: Timestamp.now() },
+          {
+            text: 'Default', name: 'Default', value: 'default', created_at: Timestamp.now(),
+          },
         )
         this.loading = false
       })
@@ -498,6 +522,12 @@ export default {
       const collectionQuery = query(collection(db, 'tags'), where('user_id', '==', userId))
       onSnapshot(collectionQuery, querySnapshot => {
         this.tags = querySnapshot.docs.map(document => document.data().name)
+        this.tagss = querySnapshot.docs.map(document => ({
+          tag_id: document.id,
+          ...document.data(),
+          text: document.data().name,
+          value: document.id,
+        }))
         this.loading = false
       })
     },
@@ -550,25 +580,35 @@ export default {
         })
         .finally(() => {
           this.loading = false
+          this.snackbar = true
         })
     },
-
-    close() {
-      this.dialog = false
-      this.$nextTick(() => {
-        this.editedItem = { ...this.defaultItem }
-        this.editedIndex = -1
-      })
+    deleteGroup(id) {
+      deleteDoc(doc(db, 'groups', id))
+        .then(() => {
+          this.message = 'Group successfully deleted'
+        })
+        .catch(error => {
+          console.error('Error deleting group:', error)
+          this.message = 'Error deleting group'
+        })
+        .finally(() => {
+          this.snackbar = true
+        })
     },
-
-    closeDelete() {
-      this.dialogDelete = false
-      this.$nextTick(() => {
-        this.editedItem = { ...this.defaultItem }
-        this.editedIndex = -1
-      })
+    deleteTag(id) {
+      deleteDoc(doc(db, 'tags', id))
+        .then(() => {
+          this.message = 'Tag successfully deleted'
+        })
+        .catch(error => {
+          console.error('Error deleting Tag:', error)
+          this.message = 'Error deleting Tag'
+        })
+        .finally(() => {
+          this.snackbar = true
+        })
     },
-
     save() {
       this.loading = true
       addDoc(collection(db, 'contacts'), {
