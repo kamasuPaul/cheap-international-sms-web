@@ -19,6 +19,15 @@ const routes = [
     },
   },
   {
+    path: '/contacts',
+    name: 'contacts',
+    component: () => import('@/views/contacts/Contacts.vue'),
+    meta: {
+      title: 'Contacts',
+      protected: true,
+    },
+  },
+  {
     path: '/about',
     name: 'about',
     meta: {

@@ -42,6 +42,11 @@
         :to="{ name: 'dashboard' }"
         :icon="icons.mdiHomeOutline"
       ></nav-menu-link>
+      <nav-menu-link
+        title="Contacts"
+        :to="{ name: 'contacts'}"
+        :icon="icons.mdiPhoneLog"
+      ></nav-menu-link>
     </v-list>
     <a
       href="#"
@@ -71,6 +76,7 @@ import {
   mdiFormSelect,
   mdiAccountCogOutline,
   mdiSchoolOutline,
+  mdiPhoneLog,
 } from '@mdi/js'
 
 // import NavMenuSectionTitle from './components/NavMenuSectionTitle.vue'
@@ -99,6 +105,7 @@ export default {
         mdiFormSelect,
         mdiAccountCogOutline,
         mdiSchoolOutline,
+        mdiPhoneLog,
       },
     }
   },
