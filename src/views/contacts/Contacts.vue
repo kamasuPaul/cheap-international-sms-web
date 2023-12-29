@@ -35,7 +35,7 @@
               </v-btn>
 
               <v-btn value="justify">
-                <span class="hidden-sm-and-down">New tags</span>
+                <span class="hidden-sm-and-down" @click="(() => { addTagDialog = true; })">New tag</span>
 
                 <v-icon right>
                   mdi-format-align-justify
@@ -255,6 +255,37 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Add tag dialog -->
+    <v-dialog v-model="addTagDialog" max-width="290">
+      <v-card>
+        <v-card-title>
+          <span class="text-h6">Add new tag</span>
+        </v-card-title>
+
+        <v-card-text>
+          <v-form>
+            <v-container>
+              <v-row>
+                <v-col cols="12">
+                  <v-text-field v-model="tag.name" dense label="Tag name"></v-text-field>
+                </v-col>
+              </v-row>
+            </v-container>
+          </v-form>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn plain @click="addTagDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn color="primary" variant="text" :loading="loading" :disabled="!tag.name" @click="saveTag">
+            Add Tag
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-card>
 </template>
 <script>
@@ -317,6 +348,7 @@ export default {
       deleteDialog: false,
       importDialog: false,
       addGroupDialog: false,
+      addTagDialog: false,
       loading: false,
       contacts: [],
       headers: [
@@ -385,6 +417,7 @@ export default {
   mounted() {
     this.getContacts()
     this.getGroups()
+    this.getTags()
   },
   methods: {
     processContacts() {
@@ -456,6 +489,15 @@ export default {
         this.groups.push(
           { text: 'Default', value: 'default', created_at: Timestamp.now() },
         )
+        this.loading = false
+      })
+    },
+    getTags() {
+      this.loading = true
+      const userId = getAuth().currentUser.uid
+      const collectionQuery = query(collection(db, 'tags'), where('user_id', '==', userId))
+      onSnapshot(collectionQuery, querySnapshot => {
+        this.tags = querySnapshot.docs.map(document => document.data().name)
         this.loading = false
       })
     },
@@ -612,6 +654,27 @@ export default {
           this.loading = false
           this.snackbar = true
           this.addGroupDialog = false
+        })
+    },
+    saveTag() {
+      this.loading = true
+      addDoc(collection(db, 'tags'), {
+        name: this.tag.name,
+        created_at: Timestamp.now(),
+        updated_at: Timestamp.now(),
+        user_id: getAuth().currentUser.uid,
+      })
+        .then(() => {
+          this.message = 'Tag successfully added'
+        })
+        .catch(error => {
+          console.error('Error adding tag:', error)
+          this.message = 'Error adding tag'
+        })
+        .finally(() => {
+          this.loading = false
+          this.snackbar = true
+          this.addTagDialog = false
         })
     },
     getGroupName(id) {
