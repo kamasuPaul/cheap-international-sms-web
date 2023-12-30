@@ -36,6 +36,14 @@
         <!-- login form -->
         <v-card-text>
           <v-form>
+            <v-alert
+              v-if="message"
+              dense
+              outlined
+              type="error"
+            >
+              {{ message }}
+            </v-alert>
             <v-text-field
               v-model="form.body.email"
               outlined
@@ -89,6 +97,7 @@
               color="primary"
               class="mt-6"
               :loading="loading"
+              :disabled="!formValidated"
               @click="signIn"
             >
               Login
@@ -105,14 +114,20 @@
         </v-card-text>
 
         <!-- divider -->
-        <v-card-text class="d-flex align-center mt-2">
+        <v-card-text
+          v-if="false"
+          class="d-flex align-center mt-2"
+        >
           <v-divider></v-divider>
           <span class="mx-5">or</span>
           <v-divider></v-divider>
         </v-card-text>
 
         <!-- social links -->
-        <v-card-actions class="d-flex justify-center">
+        <v-card-actions
+          v-if="false"
+          class="d-flex justify-center"
+        >
           <v-btn
             v-for="link in socialLink"
             :key="link.icon"
@@ -183,6 +198,7 @@ const socialLink = [
 export default {
   data() {
     return {
+      message: '',
       isPasswordVisible: false,
       loading: false,
       socialLink,
@@ -207,6 +223,16 @@ export default {
         staySignedIn: false,
       },
     }
+  },
+  computed: {
+    formValidated() {
+      const { email, password } = this.form.body
+      if (email && password) {
+        return true
+      }
+
+      return false
+    },
   },
   methods: {
     errors(res) {
@@ -256,18 +282,16 @@ export default {
         const { email, password } = this.getUserInfo()
         const auth = getAuth()
         signInWithEmailAndPassword(auth, email, password)
+          // eslint-disable-next-line no-unused-vars
           .then(userCredential => {
             // Signed up
-            const { user } = userCredential
-            console.log(user)
+            this.$router.push({ name: 'dashboard' })
           })
           .catch(error => {
             const errorCode = error.code
-            const errorMessage = error.message
+            this.message = 'Invalid username or password'
             console.log(errorCode)
-            console.log(errorMessage)
           })
-        this.$router.push({ name: 'dashboard' })
 
         // alert('Sign in successful!')
       } catch (error) {

@@ -36,6 +36,14 @@
         <!-- login form -->
         <v-card-text>
           <v-form>
+            <v-alert
+              v-if="message"
+              dense
+              outlined
+              type="error"
+            >
+              {{ message }}
+            </v-alert>
             <v-text-field
               v-model="name"
               outlined
@@ -80,6 +88,7 @@
               block
               color="primary"
               class="mt-6"
+              :disabled="!formValidated"
               @click="register"
             >
               Sign Up
@@ -98,14 +107,20 @@
         </v-card-text>
 
         <!-- divider -->
-        <v-card-text class="d-flex align-center mt-2">
+        <v-card-text
+          v-if="false"
+          class="d-flex align-center mt-2"
+        >
           <v-divider></v-divider>
           <span class="mx-5">or</span>
           <v-divider></v-divider>
         </v-card-text>
 
         <!-- social link -->
-        <v-card-actions class="d-flex justify-center">
+        <v-card-actions
+          v-if="false"
+          class="d-flex justify-center"
+        >
           <v-btn
             v-for="link in socialLink"
             :key="link.icon"
@@ -150,7 +165,14 @@
 // eslint-disable-next-line object-curly-newline
 import { mdiFacebook, mdiTwitter, mdiGithub, mdiGoogle, mdiEyeOutline, mdiEyeOffOutline } from '@mdi/js'
 import { ref } from '@vue/composition-api'
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth'
+import { getAuth, updateProfile, createUserWithEmailAndPassword } from 'firebase/auth'
+import {
+  setDoc,
+  Timestamp,
+  getFirestore,
+  doc,
+} from 'firebase/firestore'
+import { getApp } from 'firebase/app'
 
 export default {
   setup() {
@@ -182,6 +204,7 @@ export default {
     ]
 
     return {
+      message: '',
       isPasswordVisible,
       name,
       email,
@@ -194,6 +217,16 @@ export default {
       },
     }
   },
+  computed: {
+    formValidated() {
+      const { name, email, password } = this
+      if (email && password && name) {
+        return true
+      }
+
+      return false
+    },
+  },
   methods: {
     async register() {
       try {
@@ -202,15 +235,30 @@ export default {
           .then(userCredential => {
             // Signed up
             const { user } = userCredential
-            console.log(user)
+            const app = getApp()
+            const db = getFirestore(app)
+            updateProfile(auth.currentUser, {
+              displayName: this.name,
+            })
+            setDoc(doc(db, 'users', user.uid), {
+              id: user.uid,
+              name: this.name,
+              balance: 1000,
+              updated_at: Timestamp.now(),
+            })
+            this.$router.push({ name: 'dashboard' })
           })
           .catch(error => {
             const errorCode = error.code
             const errorMessage = error.message
+            this.message = errorMessage
+            if (errorCode === 'auth/invalid-email') {
+              this.message = 'Invalid email address'
+            }
+
             console.log(errorCode)
             console.log(errorMessage)
           })
-        this.$router.push({ name: 'dashboard' })
 
         // alert('Registration successful!')
       } catch (error) {

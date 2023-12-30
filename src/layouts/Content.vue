@@ -155,8 +155,10 @@ export default {
       const app = getApp()
       const db = getFirestore(app)
       onSnapshot(doc(db, 'users', currentUser.uid), document => {
-        const { balance } = document.data()
-        this.walletBalance = balance.toLocaleString()
+        if (document && document.exists()) {
+          const { balance } = document.data()
+          this.walletBalance = balance.toLocaleString()
+        }
       })
     },
   },
