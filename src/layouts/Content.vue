@@ -23,6 +23,27 @@
             class="app-bar-search flex-grow-0"
             hide-details
           ></v-text-field> -->
+          <v-chip
+            label
+            outlined
+            class="mt-3"
+          >
+            Wallet: UGX {{ walletBalance }}
+            <v-btn
+              icon
+              small
+              class="ms-3"
+              color="primary"
+            >
+              <v-icon @click="walletTopUpOpen = true">
+                {{ icons.mdiPlusCircleOutline }}
+              </v-icon>
+            </v-btn>
+          </v-chip>
+          <wallet-top-up-dialog
+            :show="walletTopUpOpen"
+            @close="walletTopUpOpen = false"
+          />
 
           <v-spacer></v-spacer>
 
@@ -81,16 +102,27 @@
 
 <script>
 import { ref } from '@vue/composition-api'
-import { mdiMagnify, mdiBellOutline, mdiGithub } from '@mdi/js'
+import {
+  mdiMagnify, mdiBellOutline, mdiGithub, mdiPlusCircleOutline,
+} from '@mdi/js'
+import { getAuth } from 'firebase/auth'
+import {
+  onSnapshot,
+  getFirestore,
+  doc,
+} from 'firebase/firestore'
+import { getApp } from 'firebase/app'
 import VerticalNavMenu from './components/vertical-nav-menu/VerticalNavMenu.vue'
 import ThemeSwitcher from './components/ThemeSwitcher.vue'
 import AppBarUserMenu from './components/AppBarUserMenu.vue'
+import WalletTopUpDialog from '@/components/WalletTopUpDialog.vue'
 
 export default {
   components: {
     VerticalNavMenu,
     ThemeSwitcher,
     AppBarUserMenu,
+    WalletTopUpDialog,
   },
   setup() {
     const isDrawerOpen = ref(null)
@@ -103,8 +135,30 @@ export default {
         mdiMagnify,
         mdiBellOutline,
         mdiGithub,
+        mdiPlusCircleOutline,
       },
     }
+  },
+  data() {
+    return {
+      walletTopUpOpen: false,
+      walletBalance: 0,
+    }
+  },
+  mounted() {
+    this.getWalletInfo()
+  },
+  methods: {
+    async getWalletInfo() {
+      const auth = getAuth()
+      const { currentUser } = auth
+      const app = getApp()
+      const db = getFirestore(app)
+      onSnapshot(doc(db, 'users', currentUser.uid), document => {
+        const { balance } = document.data()
+        this.walletBalance = balance.toLocaleString()
+      })
+    },
   },
 }
 </script>
