@@ -7,8 +7,10 @@ import store from './store'
 import http from './http'
 import router from './router'
 import config from './config'
+import FlutterwavePlugin from './plugins/flutterwave-plugin'
 
 Vue.config.productionTip = false
+Vue.use(FlutterwavePlugin)
 
 new Vue({
   store,
