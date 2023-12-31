@@ -119,6 +119,14 @@
               <p v-if="sms_text && phones">
                 Send "{{ sms_text }}" to <span class="primary--text">{{ phone_numbers.length }}</span> phone number(s)
               </p>
+              <v-alert
+                v-if="message"
+                dense
+                outlined
+                type="error"
+              >
+                {{ message }}
+              </v-alert>
             </v-col>
           </v-row>
           <v-row>
@@ -129,7 +137,7 @@
               <v-btn
                 class="mx-2"
                 color="primary"
-                :disabled="!sms_text || !phone_numbers.length > 0"
+                :disabled="!formValid"
                 :loading="loading"
                 @click="sendMessage"
               >
@@ -289,6 +297,7 @@ import {
   collection,
   onSnapshot,
   query,
+  doc,
   where,
   Timestamp,
 } from 'firebase/firestore'
@@ -319,6 +328,8 @@ export default {
   },
   data() {
     return {
+      message: '',
+      walletBalance: 0,
       otpCode: '000000',
       signPhone: '+256750883001',
       loading: false,
@@ -382,6 +393,20 @@ export default {
 
       return filteredData
     },
+    totalSmsCost() {
+      return this.phone_numbers.length * 30
+    },
+    formValid() {
+      if (this.sms_text
+      && this.sms_text.length > 0
+      && this.phone_numbers.length > 0
+      ) {
+        return true
+      }
+
+      return false
+    },
+
   },
   watch: {
     selectedColumn(newColumn) {
@@ -418,6 +443,7 @@ export default {
     this.getGroups()
     this.getContacts()
     this.getDevices()
+    this.getWalletInfo()
 
     // generate 6 digit random string
     const token = Math.random()
@@ -435,6 +461,15 @@ export default {
     this.getMessages()
   },
   methods: {
+    async getWalletInfo() {
+      const { currentUser } = auth
+      onSnapshot(doc(db, 'users', currentUser.uid), document => {
+        if (document && document.exists()) {
+          const { balance } = document.data()
+          this.walletBalance = balance.toLocaleString()
+        }
+      })
+    },
     getDeviceLabel(device) {
       // loop through device networks, create a coma seperated list of network names
       let networks = ''
@@ -554,6 +589,13 @@ export default {
       this.phone_numbers = [...this.phone_numbers]
     },
     sendMessage() {
+      // check if the total number of messages exceeds the wallet balance
+      this.message = ''
+      if (this.totalSmsCost > this.walletBalance) {
+        this.message = 'Total cost of sms exceedes wallet balance'
+
+        return
+      }
       const numItems = this.phone_numbers.length
       let i = 0
       this.selectDeviceDialog = false
@@ -612,10 +654,10 @@ export default {
       onValue(devicesRef, snapshot => {
         // eslint-disable-next-line no-unused-vars
         const deviceList = []
-        snapshot.forEach(doc => {
+        snapshot.forEach(document => {
           deviceList.push({
-            token: doc.key,
-            ...doc.val(),
+            token: document.key,
+            ...document.val(),
           })
         })
 
@@ -643,9 +685,9 @@ export default {
 
       const collectionQuery = query(collection(db, 'messages'), where('user_id', '==', userId))
       onSnapshot(collectionQuery, querySnapshot => {
-        this.messages = querySnapshot.docs.map(doc => ({
-          message_id: doc.id,
-          ...doc.data(),
+        this.messages = querySnapshot.docs.map(document => ({
+          message_id: document.id,
+          ...document.data(),
         }))
 
         // sort the messages by created_at
