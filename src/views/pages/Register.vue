@@ -243,7 +243,7 @@ export default {
             setDoc(doc(db, 'users', user.uid), {
               id: user.uid,
               name: this.name,
-              balance: 1000,
+              balance: 100,
               updated_at: Timestamp.now(),
             })
             this.$router.push({ name: 'dashboard' })
